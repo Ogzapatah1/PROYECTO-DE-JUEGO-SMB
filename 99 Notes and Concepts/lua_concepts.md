@@ -367,8 +367,9 @@ but hasn't been given an animation state yet.
 | `if thing then return end` | setState, draw | Guard clause |
 | `previous[k] = current[k]` | input.lua | Two-frame state snapshot |
 | `pairs(table)` | input.lua | Iterate string-keyed tables |
+| `function love.keypressed(key)` | main.lua | Event handler for single keypress (R = hot-reload) |
+| `string:gmatch("[^,]+")` | main.lua | Splits comma-separated test names in dispatcher |
 
 ---
 
-*Last updated: Phase 1 setup — Input + Animation modules*
-*Next concepts to add: AABB collision, state machines, dt-based physics*
+*Last updated: Phase 2 completion — STI, Bump physics alignment, Camera clamping, Selftests (157 PASS)*

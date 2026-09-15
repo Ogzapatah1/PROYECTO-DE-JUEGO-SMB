@@ -173,10 +173,12 @@ Import sprite sheets + tilemap JSON into Love2D
 - Basic physics (gravity, velocity, jumping)
 - Flat ground collision
 
-### Phase 2 — World
-- Tilemap module
-- Tile-based collision via bump.lua
-- Camera module with world clamping
+### Phase 2 — World (Completed & Tested)
+- [x] Tilemap module with STI
+- [x] Tile-based collision via bump.lua (Top-left coordinate alignment)
+- [x] Camera module with world bounds clamping (640x352 map size)
+- [x] Automated test suite (157 selftests passing at 100%)
+- [x] Live level hot-reload (R key)
 
 ### Phase 3 — Game Feel
 - Sprite sheet animations (idle, walk, jump, fall)

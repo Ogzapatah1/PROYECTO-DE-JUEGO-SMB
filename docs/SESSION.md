@@ -6,40 +6,32 @@ Comparte este archivo al inicio de cada sesión junto con DECISIONS.md.
 
 ## Dónde estamos
 
-Phase 1 — Infraestructura completa, primer código funcionando.
+Phase 2 — World 100% FUNCIONAL Y PROBADA. El juego carga el mapa de Tiled, el player
+colisiona con los tiles vía bump.lua sin desalineación, la cámara lo sigue correctamente
+con zoom 3x, y todos los 157 selftests pasan al 100%.
 
-**Completado:**
-- Estructura de carpetas creada en el proyecto real
-- conf.lua (512×288, physics off), main.lua, src/input.lua, src/animation.lua escritos
-- Input module probado y confirmado funcionando (isDown, isPressed, isReleased)
-- Arte elegido: Pink Monster (32×32) + Cave Tileset (32×32, sheet 320×192)
-- Assets copiados en assets/sprites/
-- 13 archivos de animación del Pink Monster catalogados por fase
+**Completado (Sesión 5):**
+- **Estandarización de coordenadas Top-Left**: `Player.new` y `Player:update` usan `(x, y)` top-left para bump y dibujo, corrigiendo la desviación progresiva por cuadro.
+- **Fix de cámara**: `Tilemap.getBounds(map)` devuelve 4 valores (`minX, minY, maxX, maxY`). Se corrigió en `main.lua` desempacando `_, _, mapW, mapH`, habilitando el clamping a los 640×352 px del mapa.
+- **Console log en Windows**: `t.console = true` agregado en `conf.lua`.
+- **Hot-Reload de mapa**: Presionar la tecla `R` en el juego recarga el nivel desde el archivo `.lua` de Tiled inmediatamente sin reiniciar la aplicación.
+- **Suite de Selftests Automatizada**: 157/157 checks passing (0 fallos) en `--test=input,animation,player,tilemap,bump,camera,full`.
 
-**Pendiente inmediato (próxima sesión):**
-- Reescribir src/animation.lua para formato multi-archivo (una imagen por estado)
-- Escribir src/entities/player.lua
-- Actualizar main.lua para cargar y dibujar el player
-- Primer hito visual: Pink Monster en pantalla, idle, camina, salta
+**Pendiente (próxima sesión):**
+- Diseñar niveles adicionales en Tiled exportando a `assets/maps/level_1_1.lua` (formato `.lua`).
+- Iniciar Fase 3 (Game Feel: efectos de sonido, partículas, refinamiento de animaciones) y Fase 4 (Enemigos / Goombas).
 
 ## Objetivo de hoy
 
-_(Completar antes de empezar la sesión)_
+- Nivel jugable mínimo validado y verificado (100% Completado).
 
 ## Bloqueado / pendiente de decisión
 
-- Ninguno. Todas las decisiones técnicas de esta sesión están resueltas.
-- Ver DECISIONS.md #001, #002, #003 para el razonamiento completo.
+- Ninguno. Ver DECISIONS.md #006 y #007.
 
 ## Recordatorio para próxima sesión
 
-animation.lua necesita reescritura. El nuevo formato de estados es:
-```lua
-{
-  idle = { path = "assets/sprites/Pink_Monster_Idle_4.png", frames = 4, duration = 0.15 },
-  walk = { path = "assets/sprites/Pink_Monster_Walk_6.png", frames = 6, duration = 0.10 },
-  run  = { path = "assets/sprites/Pink_Monster_Run_6.png",  frames = 6, duration = 0.07 },
-  jump = { path = "assets/sprites/Pink_Monster_Jump_8.png", frames = 8, duration = 0.12 },
-}
-```
-La interfaz pública (setState, update, draw) no cambia.
+- Para probar el juego manualmente: `& "C:\Program Files\LOVE\lovec.exe" "PROYECTO DE JUEGO SMB"`.
+- Para ejecutar los tests automáticos: `& "C:\Program Files\LOVE\lovec.exe" . --test=input,animation,player,tilemap,bump,camera,full`.
+- En el juego: Flechas = Mover, Z = Saltar, X = Correr, R = Recargar Mapa.
+- Al guardar cambios desde Tiled (`File > Export As... > Lua files (*.lua)`), presionar `R` en el juego refresca el escenario al instante.

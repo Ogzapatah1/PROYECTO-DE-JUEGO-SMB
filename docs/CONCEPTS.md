@@ -79,6 +79,38 @@ end
 **Qué es:** Controla cómo Love2D escala las imágenes. "nearest" mantiene cada píxel como un cuadrado nítido. Sin esto, el pixel art se ve borroso al escalarlo.
 **En nuestro juego:** Se llama en love.load() con "nearest", "nearest" antes de cargar cualquier imagen.
 
+### Integrar velocidad con dt (física de jugador)
+**Qué es:** La física por frames funciona en dos pasos:
+1. La velocidad cambia por fuerzas aplicadas: `vy = vy + gravedad * dt`
+2. La posición cambia por la velocidad: `y = y + vy * dt`
+**En nuestro juego:** En `Player:update`, el orden exacto es: leer input → saltar → aplicar gravedad → mover → colisionar con el suelo. Si inviertes el orden, el juego se siente "pegajoso" o el personaje atraviesa el piso.
+
+### Salto variable (cortar velocidad al soltar)
+**Qué es:** El alto del salto se controla cortando la velocidad vertical a la mitad en el momento que sueltas la tecla. Mantener la tecla = salto completo; soltarla temprano = brinco corto.
+**Por qué importa:** Es un detalle clásico de plataformeros que se siente muchísimo en el control. Se logra con el evento `isReleased`.
+**En nuestro juego:**
+```lua
+if Input.isReleased("jump") and self.vy < 0 then
+    self.vy = self.vy * JUMP_CUT  -- JUMP_CUT = 0.5
+end
+```
+
+### Ancla del sprite en el centro + colisión con altura visual
+**Qué es:** Nuestros sprites se dibujan desde su CENTRO (`draw` con origen en ox, oy). Cuando escalas un sprite, su ancho y alto visuales cambian, pero la física lógica no.
+**Problema:** Si el suelo chequea con la mitad lógica (16px en un sprite de 32), pero el sprite dibujado mide 96px (32×3 de escala), los pies quedan hundidos en el piso.
+**Solución (MVP):** Chequear el suelo con la altura VISUAL: `halfH = (height/2) * scale`. Los pies tocan exactamente la superficie.
+**En nuestro juego:** `GROUND_Y = 224` en player.lua. Este atajo se revisará cuando llegue bump.lua (DECISIONS.md #004).
+
+### Estados de animación == comportamiento (state machine)
+**Qué es:** No eliges la animación "por si acaso": eliges el estado según lo que de verdad pasó este frame. Es la regla que mantiene el sprite honesto con el gameplay.
+**En nuestro juego:**
+```lua
+if not grounded then setState("jump")
+elseif vx ~= 0 then setState(corriendo and "run" or "walk")
+else setState("idle") end
+```
+Primero se decide el comportamiento (física), después la animación lo refleja.
+
 ---
 
 ## Librerías externas
@@ -116,6 +148,18 @@ local anim = anim8.newAnimation(grid("1-6", 1), 0.1)  -- 6 frames, fila 1
 ### Quad (Love2D)
 **Qué es:** La forma nativa de Love2D para recortar un rectángulo de una imagen más grande. Le dices: "de esta imagen, dame el rectángulo en x=64, y=0, ancho=32, alto=32".
 **En nuestro juego:** anim8 crea Quads internamente. No necesitamos crearlos a mano con nuestros assets actuales.
+
+### Estandarización Top-Left (x, y) en física y Bump
+**Qué es:** Mantener las variables `x` e `y` de cada entidad representando la esquina superior izquierda de su caja de colisión (AABB).
+**Por qué importa:** bump.lua y STI operan en coordenadas top-left. Si una entidad guardaba el centro en `x, y`, cada llamada a `world:move()` producía un desplazamiento involuntario. Estandarizar top-left simplifica bump y STI, requiriendo solo desplazar el origen `+ width/2, + height/2` al dibujar la animación.
+
+### Hot-Reload en vivo (love.keypressed)
+**Qué es:** Volver a invocar la función de carga (`loadGame()`) mediante un atajo de teclado sin cerrar la aplicación.
+**En nuestro juego:** Al presionar `R`, LÖVE relee `assets/maps/level_1_1.lua` desde el disco, reconstruyendo el mapa de STI y el mundo de bump. Esto permite editar niveles en Tiled, exportar y ver los cambios al instante.
+
+### Suite de Selftests Progresiva
+**Qué is:** Un arnés de pruebas automatizado dividido en módulos (`test_input`, `test_animation`, `test_player`, `test_tilemap`, `test_bump`, `test_camera`, `test_full`).
+**Por qué importa:** Permite validar de forma aislada cada subsistema. Si algo falla, el reporte indica exactamente qué módulo romper y por qué.
 
 ---
 

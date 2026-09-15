@@ -16,6 +16,12 @@
 --   2. Pick frames:    grid("1-4", 2)  = columns 1-4, row 2
 --   3. Make animation: anim8.newAnimation(frames, secondsPerFrame)
 --   4. Each frame:     anim:update(dt)  then  anim:draw(image, x, y, ...)
+--
+-- FORMAT (multi-file): each state is ONE horizontal strip PNG, row 1.
+--   states = {
+--     idle = { path = "assets/sprites/Pink_Monster_Idle_4.png", frames = 4, duration = 0.15 },
+--     walk = { path = "assets/sprites/Pink_Monster_Walk_6.png", frames = 6, duration = 0.10 },
+--   }
 
 local anim8 = require("lib/anim8")
 
@@ -30,52 +36,67 @@ local Animation = {}
 Animation.__index = Animation
 
 
+-- ─── DEFAULT FRAME SIZE ──────────────────────────────────────────────────────
+-- All current sprites (Pink Monster, cave tiles) are 32×32.
+-- States can still override with their own frameW/frameH if needed.
+
+Animation.defaultFrameW = 32
+Animation.defaultFrameH = 32
+
+
 -- ─── ANIMATION.NEW ───────────────────────────────────────────────────────────
 -- Creates one animation controller for ONE entity (e.g. the player).
 -- Call this inside the entity's own load/init function, not in main.lua.
 --
 -- PARAMETERS:
---   spritesheet    the image loaded with love.graphics.newImage()
---   frameW, frameH pixel dimensions of a SINGLE frame in the sheet
---   states         table defining every animation state, for example:
+--   states   table defining every animation state, one PNG per state:
 --
 --       {
---         idle  = { cols = "1-1", row = 1, duration = 0.15 },
---         walk  = { cols = "1-6", row = 2, duration = 0.08 },
---         jump  = { cols = "1-2", row = 3, duration = 0.12 },
---         fall  = { cols = "1-1", row = 4, duration = 0.15 },
+--         idle = { path = "...Idle_4.png",  frames = 4, duration = 0.15 },
+--         walk = { path = "...Walk_6.png",  frames = 6, duration = 0.10 },
+--         jump = { path = "...Jump_8.png",  frames = 8, duration = 0.12 },
 --       }
 --
---   cols     which columns to use ("1-4" = frames 1, 2, 3, 4)
---   row      which row of the sprite sheet to pull frames from
---   duration seconds per frame (smaller number = faster animation)
+--   frames     number of frames in the strip (width / frameW)
+--   duration   seconds per frame (smaller number = faster animation)
+--   (optional) frameW, frameH per state, default 32×32
 
-function Animation.new(spritesheet, frameW, frameH, states)
+function Animation.new(states)
     -- setmetatable links this new table to Animation so it inherits all methods
     local self = setmetatable({}, Animation)
-
-    self.image  = spritesheet
-    self.frameW = frameW
-    self.frameH = frameH
-
-    -- Build the anim8 grid from the sprite sheet dimensions
-    local grid = anim8.newGrid(
-        frameW, frameH,
-        spritesheet:getWidth(),
-        spritesheet:getHeight()
-    )
 
     -- Build one anim8 animation object per state definition
     self.anims = {}
     for name, def in pairs(states) do
-        self.anims[name] = anim8.newAnimation(
-            grid(def.cols, def.row),    -- which frames to use
-            def.duration                -- seconds between frame changes
-        )
+        local frameW = def.frameW or Animation.defaultFrameW
+        local frameH = def.frameH or Animation.defaultFrameH
+
+        local image = love.graphics.newImage(def.path)
+
+        -- Defensive check: declared frames must match the real strip width
+        local realFrames = image:getWidth() / frameW
+        if realFrames ~= def.frames then
+            print("WARNING: state '" .. name .. "' says " .. def.frames ..
+                  " frames but image is " .. realFrames)
+        end
+
+        -- Vertical strips are row 1, always N columns wide
+        -- grid(cols, rows): columns 1..N on the single first row
+        local grid = anim8.newGrid(frameW, frameH, image:getWidth(), image:getHeight())
+
+        self.anims[name] = {
+            image   = image,
+            anim    = anim8.newAnimation(grid("1-" .. def.frames, 1), def.duration),
+            frameW  = frameW,
+            frameH  = frameH,
+        }
     end
 
     self.currentState = nil     -- name of the active state (string)
     self.currentAnim  = nil     -- the active anim8 animation object
+    self.currentImage = nil     -- the active state's image
+    self.frameW = Animation.defaultFrameW
+    self.frameH = Animation.defaultFrameH
 
     -- 1 = facing right (default), -1 = facing left
     -- We flip the sprite with a negative scaleX instead of needing
@@ -103,7 +124,10 @@ function Animation:setState(name)
     end
 
     self.currentState = name
-    self.currentAnim  = self.anims[name]
+    self.currentAnim  = self.anims[name].anim
+    self.currentImage = self.anims[name].image
+    self.frameW = self.anims[name].frameW
+    self.frameH = self.anims[name].frameH
     self.currentAnim:gotoFrame(1)       -- always start a new state from frame 1
 end
 
@@ -145,18 +169,20 @@ end
 -- This means x,y represents the middle of the sprite, not its top-left corner.
 -- That matters for collision box alignment and camera tracking.
 
-function Animation:draw(x, y)
+function Animation:draw(x, y, scale)
     if not self.currentAnim then return end
+
+    scale = scale or 1
 
     local ox = self.frameW / 2      -- horizontal center of one frame
     local oy = self.frameH / 2      -- vertical center of one frame
 
     self.currentAnim:draw(
-        self.image,         -- the sprite sheet
+        self.currentImage,  -- this state's own PNG
         x, y,               -- world position
         0,                  -- rotation (0 = none)
-        self.direction,     -- scaleX: 1 = normal, -1 = flip horizontally
-        1,                  -- scaleY: always 1
+        self.direction * scale, -- scaleX: 1 = normal, -1 = flip horizontally
+        scale,              -- scaleY: always 1
         ox, oy              -- origin offset: draw from center
     )
 end

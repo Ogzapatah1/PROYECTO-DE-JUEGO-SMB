@@ -1,0 +1,9 @@
+# Logs and transient test outputs
+*.log
+selftest_*.txt
+
+# OS / Editor generated files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

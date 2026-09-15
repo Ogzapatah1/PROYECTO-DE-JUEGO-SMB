@@ -7,6 +7,7 @@ function love.conf(t)
     t.window.width  = 512                 -- base resolution (16:9 friendly)
     t.window.height = 288                 -- at 4x scale this is 1536x864
     t.window.vsync  = 1                   -- lock to monitor refresh rate
+    t.console       = true                -- attach stdout console on Windows
 
     -- Disable modules we don't need.
     -- We use bump.lua for collision, NOT Love2D's built-in Box2D physics.
