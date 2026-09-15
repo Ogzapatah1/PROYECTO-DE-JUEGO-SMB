@@ -25,7 +25,7 @@ local bump      = require("lib/bump")
 local GRAVITY     = 700    -- px per second² (how fast we fall)
 local WALK_SPEED  = 120    -- px per second while walking
 local RUN_SPEED   = 200    -- px per second while holding "run"
-local JUMP_SPEED  = -300   -- px per second (negative = up)
+local JUMP_SPEED  = -340   -- px per second (negative = up)
 local JUMP_CUT    = 0.5    -- velocity multiplier on early jump release
 
 

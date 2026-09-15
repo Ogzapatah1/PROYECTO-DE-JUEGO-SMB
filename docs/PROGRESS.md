@@ -22,11 +22,16 @@
 - **Hot-Reload en vivo** — presionar `R` recarga el nivel desde el archivo `.lua` de Tiled en caliente
 - **Suite de Selftests Automatizada** — `src/selftest/` con 157 checks en 7 módulos (`input`, `animation`, `player`, `tilemap`, `bump`, `camera`, `full`) funcionando a **100% PASS**
 
+- **Documentation & GitHub**: README.md exhaustivo creado y repositorio sincronizado en GitHub.
+- **Workflow de Niveles con Tiled**: Creación del archivo de proyecto `assets/maps/level_1_1.tmx` y configuración de auto-exportación a `.lua`.
+- **Ajustes de Cámara & Viewport**: Escala de cámara ajustada a `CAMERA_SCALE = 2` (de 3x a 2x) para mayor visibilidad del nivel en pantalla.
+- **Tuning de Física de Salto**: Ajuste de `JUMP_SPEED` a `-340` en `player.lua` para permitir superar obstáculos de 2 tiles (64px) de altura limpiamente.
+
 ---
 
 ## 🔄 En progreso
 
-- **Transición a Fase 3 — Game Feel & Level Design** — el motor mínimo del nivel está 100% probado y funcionando.
+- **Transición a Fase 3 — Game Feel & Level Design** — motor de nivel y cámara ajustados; listo para diseñar niveles completos y agregar FX.
 
 ---
 
@@ -48,7 +53,8 @@
 - [x] Unpacking de dimensiones de cámara (`mapW`, `mapH`)
 - [x] Recarga de mapa en caliente (`R` key)
 - [x] Suite de selftest progresiva (157 checks, 100% PASS)
-- [ ] Diseñar niveles completos en Tiled usando `level_1_1.lua` como plantilla
+- [x] Integración editable en Tiled (.tmx) + documentación completa README.md
+- [ ] Diseñar niveles completos en Tiled usando `level_1_1.tmx` / `level_1_1.lua`
 
 ### Phase 3 — Game Feel
 - [ ] Estados de animación adicionales (hurt, climb, attack)
@@ -72,6 +78,7 @@
 | Septiembre 2026 — Sesión 3 | animation.lua reescrito a multi-archivo, player.lua MVP (movimiento, gravedad, salto variable, animación), HUD de debug — Fase 1 completa |
 | Septiembre 2026 — Sesión 4 | Tiled instalado, libs descargadas (bump, STI, HUMP camera), mapa de prueba 20×11 creado como .lua, STI + bump plugin + cámara integrados, player usa bump para colisión con tiles — Fase 2 funcional |
 | Septiembre 2026 — Sesión 5 | Solución de desalineación de coordenadas Player-Bump (Top-Left), fix de desempacado de dimensiones de cámara `Tilemap.getBounds`, adición de hot-reload con tecla `R`, activación de `t.console = true` en `conf.lua`, suite de selftests corregida y validada con **157/157 PASS (100%)** — Fase 2 100% Probada y Operativa |
+| Septiembre 2026 — Sesión 6 | Creación de README.md, .gitignore y sincronización en GitHub; creación de `level_1_1.tmx` para edición visual en Tiled; ajuste de viewport (`CAMERA_SCALE = 2`) y tuning de física de salto (`JUMP_SPEED = -340` para superar 2 tiles). |
 
 ---
 

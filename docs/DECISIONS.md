@@ -222,4 +222,22 @@ Para verificar rápidamente la física, el mapa, la cámara y el cargador de map
 
 ---
 
+## #008 — Escala del Viewport (`CAMERA_SCALE`) y Tuning de Física de Salto (`JUMP_SPEED`)
+
+**Fecha:** Septiembre 2026
+**Estado:** ✅ Resuelta
+
+**Situación:**
+1. Con `CAMERA_SCALE = 3` en una ventana de 512×288, el viewport visible era de solo 5.3×3 tiles, sintiéndose demasiado cercano e impidiendo ver el nivel por venir.
+2. `JUMP_SPEED = -300` alcanzaba una altura máxima teórica de $300^2 / 1400 \approx 64.28\text{px}$ (apenas 2.0 tiles), lo que provocaba que en la física por fotogramas el jugador chocara contra el borde superior de obstáculos de 2 tiles (64px) de alto en lugar de superarlos y aterrizar sobre ellos.
+
+**Decisión:**
+1. Modificar `CAMERA_SCALE = 2` en `main.lua`. Esto amplía la visibilidad a 8×4.5 tiles por pantalla sin distorsionar la física ni el pixel art.
+2. Ajustar `JUMP_SPEED = -340` en `src/entities/player.lua`. Esto incrementa la altura máxima de salto a ~82.5px (~2.58 tiles), permitiendo superar obstáculos de 2 tiles limpiamente al mantener presionada la tecla de salto.
+
+**Resultado:** El viewport muestra un área de juego mucho más amplia y cómoda, y el jugador puede saltar y aterrizar con precisión sobre plataformas de 2 tiles de altura.
+
+---
+
 _(Las nuevas decisiones se agregan abajo en orden cronológico)_
+

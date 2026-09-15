@@ -25,7 +25,7 @@ local bump = require("lib/bump")
 -- All in one place so it's easy to change.
 
 local MAP_PATH     = "assets/maps/level_1_1.lua"
-local CAMERA_SCALE = 3        -- pixel-art zoom
+local CAMERA_SCALE = 1.5        -- pixel-art zoom
 local BUMP_CELL    = 32       -- bump world cell size (matches tile size)
 
 

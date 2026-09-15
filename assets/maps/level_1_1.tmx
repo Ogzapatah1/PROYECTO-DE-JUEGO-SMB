@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="20" height="11" tilewidth="32" tileheight="32" infinite="0" backgroundcolor="#3a3a6e" nextlayerid="3" nextobjectid="2">
+ <editorsettings>
+  <export target="level_1_1.lua" format="lua"/>
+ </editorsettings>
+ <tileset firstgid="1" name="cave" tilewidth="32" tileheight="32" tilecount="60" columns="10">
+  <image source="../sprites/Tileset.png" width="320" height="192"/>
+ </tileset>
+ <layer id="1" name="ground" width="20" height="11">
+  <properties>
+   <property name="collidable" type="bool" value="true"/>
+  </properties>
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,47,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,7,7,7,7,0,1,1,0,0,1,0,0,0,
+0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,
+0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,0,
+0,0,0,1,1,1,1,0,0,0,1,1,0,0,1,1,1,1,1,0,
+1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,
+11,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,12,13
+</data>
+ </layer>
+ <objectgroup id="2" name="spawn">
+  <object id="1" name="player_spawn" x="48.0746" y="249.604">
+   <point/>
+  </object>
+ </objectgroup>
+</map>

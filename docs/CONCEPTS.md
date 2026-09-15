@@ -158,9 +158,26 @@ local anim = anim8.newAnimation(grid("1-6", 1), 0.1)  -- 6 frames, fila 1
 **En nuestro juego:** Al presionar `R`, LÖVE relee `assets/maps/level_1_1.lua` desde el disco, reconstruyendo el mapa de STI y el mundo de bump. Esto permite editar niveles en Tiled, exportar y ver los cambios al instante.
 
 ### Suite de Selftests Progresiva
-**Qué is:** Un arnés de pruebas automatizado dividido en módulos (`test_input`, `test_animation`, `test_player`, `test_tilemap`, `test_bump`, `test_camera`, `test_full`).
+**Qué es:** Un arnés de pruebas automatizado dividido en módulos (`test_input`, `test_animation`, `test_player`, `test_tilemap`, `test_bump`, `test_camera`, `test_full`).
 **Por qué importa:** Permite validar de forma aislada cada subsistema. Si algo falla, el reporte indica exactamente qué módulo romper y por qué.
+
+### Archivo Fuente (.tmx) vs Archivo Exportado (.lua) en Tiled
+**Qué es:** La separación entre el archivo de trabajo del editor (`.tmx` en formato XML) y el archivo de producción compilado para el motor de juego (`.lua` en tablas Lua nativas).
+**Por qué importa:** LÖVE2D y STI no leen XML (.tmx) directamente para no ralentizar el juego procesando texto XML. Al exportar a `.lua`, LÖVE lee las tablas de tiles a máxima velocidad mediante la función nativa `require()`.
+
+### Repetición de Exportación en Tiled ("Repeat last export on save")
+**Qué es:** Opción de Tiled (`Preferences -> General -> Repeat last export on save`) que automatiza la exportación.
+**En nuestro juego:** Al guardar con `Ctrl + S` el archivo `.tmx`, Tiled exporta e invalida `level_1_1.lua` de forma invisible. Al presionar `R` en el juego, los cambios en el mapa se reflejan de inmediato.
+
+### Relación de Escala del Viewport (`CAMERA_SCALE`)
+**Qué es:** La fórmula que determina cuántos tiles se observan simultáneamente en la ventana.
+**Fórmula:** $\text{Tiles Visibles (Ancho)} = \frac{\text{Ancho Ventana (px)}}{\text{CAMERA\_SCALE} \times \text{Tile Size (px)}}$.
+**En nuestro juego:** A 512×288px y tiles de 32px:
+- `scale = 3` → $512 / 96 = 5.3$ tiles de ancho.
+- `scale = 2` → $512 / 64 = 8.0$ tiles de ancho.
+- `scale = 1.5` → $512 / 48 = 10.6$ tiles de ancho.
 
 ---
 
 _(Los nuevos conceptos se agregan a medida que aparecen en las sesiones)_
+
