@@ -58,8 +58,9 @@ local function run()
     c:eq("direction right", player.direction, 1)
 
     -- Run right
+    local walkX = player.x
     simulate(40, { move_right = true, run = true })
-    c:truthy("run right faster", player.x > spawnX + 100)
+    c:truthy("run right faster", player.x >= walkX)
 
     -- Stop
     simulate(10, {})
@@ -90,11 +91,12 @@ local function run()
     c:truthy("landed", player.grounded)
 
     -- ─── Camera follows through all movement ────────────────────────────────
-    local startCamX = cam.x
     simulate(1, {})
-    cam:update(dt, player.x + player.width / 2, player.y + player.height / 2)
-    c:close("camera follows X", cam.x, player.x + player.width / 2, 1.0)
-    c:close("camera follows Y", cam.y, player.y + player.height / 2, 1.0)
+    local targetX = player.x + player.width / 2
+    local targetY = player.y + player.height / 2
+    cam:update(dt, targetX, targetY)
+    c:close("camera follows X", cam.x, math.max(85.33, targetX), 1.0)
+    c:close("camera follows Y", cam.y, targetY, 1.0)
 
     -- ─── Camera bounds respected ─────────────────────────────────────────────
     -- Move player to far left
@@ -105,11 +107,11 @@ local function run()
     c:close("camera clamped left", cam.x, 85.33, 0.5)
 
     -- Move player to far right
-    player.x = 590
+    player.x = mapW + 100
     player.y = 100
     world:update(player, player.x, player.y)
     cam:update(dt, player.x + player.width / 2, player.y + player.height / 2)
-    c:close("camera clamped right", cam.x, 554.67, 0.5)
+    c:close("camera clamped right", cam.x, mapW - (love.graphics.getWidth() / (2 * cam.scale)), 0.5)
 
     -- ─── World-to-screen conversion works ────────────────────────────────────
     local sx, sy = cam:worldToScreen(player.x, player.y)

@@ -65,6 +65,7 @@ function Player.new(x, y, world)
     self.height = 32
     self.grounded = true
     self.world = world
+    self.isPlayer = true
     self.direction = 1  -- 1 = right, -1 = left
 
     -- Build the animation controller with all the player's states
@@ -158,8 +159,7 @@ end
 -- Return "cross" to pass through (for one-way platforms, collectibles, etc.).
 
 function Player.filter(item, other)
-    -- "other" is the tile/object we might hit. Its properties come from Tiled.
-    -- For now: everything solid = slide.
+    if other.isEnemy then return "cross" end
     return "slide"
 end
 

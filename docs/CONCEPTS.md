@@ -158,7 +158,7 @@ local anim = anim8.newAnimation(grid("1-6", 1), 0.1)  -- 6 frames, fila 1
 **En nuestro juego:** Al presionar `R`, LÖVE relee `assets/maps/level_1_1.lua` desde el disco, reconstruyendo el mapa de STI y el mundo de bump. Esto permite editar niveles en Tiled, exportar y ver los cambios al instante.
 
 ### Suite de Selftests Progresiva
-**Qué es:** Un arnés de pruebas automatizado dividido en módulos (`test_input`, `test_animation`, `test_player`, `test_tilemap`, `test_bump`, `test_camera`, `test_full`).
+**Qué es:** Un arnés de pruebas automatizado dividido en módulos (`test_input`, `test_animation`, `test_player`, `test_tilemap`, `test_bump`, `test_camera`, `test_full`, `test_enemy`).
 **Por qué importa:** Permite validar de forma aislada cada subsistema. Si algo falla, el reporte indica exactamente qué módulo romper y por qué.
 
 ### Archivo Fuente (.tmx) vs Archivo Exportado (.lua) en Tiled
@@ -176,8 +176,16 @@ local anim = anim8.newAnimation(grid("1-6", 1), 0.1)  -- 6 frames, fila 1
 - `scale = 3` → $512 / 96 = 5.3$ tiles de ancho.
 - `scale = 2` → $512 / 64 = 8.0$ tiles de ancho.
 - `scale = 1.5` → $512 / 48 = 10.6$ tiles de ancho.
+- `scale = 1` → $512 / 32 = 16$ tiles de ancho; este es el valor actual de `main.lua`.
+
+### Estados del juego (`gameState`)
+**Qué es:** Una variable que indica qué parte del flujo está activa: `playing`, `died`, `game_over`, `stage_finished`, `no_more_stages` o `ending`.
+**En nuestro juego:** `main.lua` actualiza jugador y enemigo solo en `playing`. Al caer al foso, resta una de las 3 vidas y muestra `died` durante 5 segundos antes de reaparecer; con 0 vidas muestra `game_over` durante 6 segundos antes de reiniciar. Al llegar al extremo derecho, `stage_finished` espera la tecla `C` o `F`.
+
+### Seguimiento horizontal del Dude Monster
+**Qué es:** Una regla simple de movimiento que compara la posición horizontal del enemigo con la del jugador y elige caminar a izquierda o derecha.
+**En nuestro juego:** `src/entities/enemy.lua` usa esa comparación, aplica gravedad y mueve la caja de colisión con `bump.lua`. El enemigo se anima, cae y choca con el terreno. El contacto con el jugador todavía no causa daño: ambos se atraviesan.
 
 ---
 
 _(Los nuevos conceptos se agregan a medida que aparecen en las sesiones)_
-

@@ -55,7 +55,9 @@ local function run()
     for _ = 1, 120 do player:update(dt) end
     local info = player:getInfo()
     c:truthy("player grounded on bump tiles", info.grounded)
-    c:close("player y near ground", info.y, 256.0, 2.0)
+    -- The current Tiled level places the landing surface at y = 224.
+    -- A 32px-tall player therefore lands with top-left y = 192.
+    c:close("player y near ground", info.y, 192.0, 2.0)
 
     -- ─── Move right on ground ────────────────────────────────────────────────
     local Input = require("src/input")
@@ -78,9 +80,9 @@ local function run()
     -- Player should stop at pillar (x ~ 512 = 16*32, before pillar at 544)
     c:truthy("stops at wall", player.x < 540)
 
-    -- ─── Land on platform (row 5, col 13-14) ─────────────────────────
+    -- ─── Land on platform (row 6, col 8-12) ─────────────────────────
     -- Platform at y = 5*32 = 160. Player top-left on platform = 160 - 32 = 128.
-    player.x = 384
+    player.x = 256
     player.y = 120
     player.vx = 0
     player.vy = 0

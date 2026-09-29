@@ -13,7 +13,7 @@
 --   end)
 --
 -- OUTPUT:
---   Writes to selftest_<name>.txt in project root
+--   Writes to Tests Results/selftest_<name>.txt
 --   Returns 0 (all pass) or 1 (any fail)
 --   Prints summary to stdout
 
@@ -24,7 +24,7 @@ Runner._VERSION = "0.1"
 -- ─── RESULT DIRECTORY ────────────────────────────────────────────────────────
 -- Fixed path so PowerShell can find it without env vars.
 
-local RESULT_DIR = "C:\\Users\\Admin\\Desktop\\AI and Programing\\Proyects\\LOVE2D\\PROYECTO DE JUEGO SMB"
+local RESULT_DIR = "C:\\Users\\Admin\\Desktop\\AI and Programing\\Proyects\\LOVE2D\\PROYECTO DE JUEGO SMB\\Tests Results"
 
 
 -- ─── CHECKS BUILDER ──────────────────────────────────────────────────────────

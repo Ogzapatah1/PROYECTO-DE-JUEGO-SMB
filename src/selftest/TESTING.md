@@ -33,6 +33,7 @@
 | `bump` | Colisión | `bump` + `tilemap` + `player` | ~2s |
 | `camera` | Cámara | `src/camera` | < 1s |
 | `full` | Integración | **todo** | ~5s |
+| `enemy` | Enemigo inicial | `src/entities/enemy` + `bump` | < 1s |
 
 ### Qué hace cada test
 
@@ -72,12 +73,12 @@
 #### `test_tilemap.lua`
 - Carga `assets/maps/level_1_1.lua` via `Tilemap.load()`
 - Verifica:
-  - Dimensiones: 20×11 tiles, 32×32 px
+  - Dimensiones válidas del mapa actual: 80×11 tiles, 32×32 px. El test comprueba que ancho y alto sean positivos; no fija 80×11.
   - Capas: `ground` (tilelayer, `collidable=true`) + `spawn` (objectgroup)
   - Tileset `cave`: 60 tiles, 10 columnas, imagen incrustada
   - `map.tiles` poblado (gid 1 existe)
-  - `getSpawn("player_spawn")` → (160, 256)
-  - `getBounds()` → (0, 0, 640, 352)
+  - `getSpawn("player_spawn")` devuelve coordenadas válidas
+  - `getBounds()` coincide con las dimensiones del mapa (actualmente 0, 0, 2560, 352)
 
 #### `test_bump.lua`
 - Crea `bump.newWorld(32)`, `map:bump_init(world)` (plugin STI)
@@ -85,14 +86,14 @@
   - World creado, items ≥ 49 (tiles sólidos del mapa)
   - Cada item tiene rect 32×32
   - Player spawneado en bump → `world:getRect(player)` válido
-  - Caída y aterrizaje en tiles bump → `grounded=true`
+  - Caída y aterrizaje en tiles bump → `grounded=true` y `player.y` cerca de 192 (superficie a y=224 en el mapa actual)
   - Movimiento derecha en suelo bump
   - **Choque con pared** (pilar col 17): player se detiene antes del tile
-  - **Salto a plataforma** (row 6): aterriza en `y = 192 - 48`
+  - **Salto a plataforma** (row 6): aterriza cerca de `y = 128`
   - **Slide vertical**: mover contra pared mientras cae → desliza hacia abajo
 
 #### `test_camera.lua`
-- `Camera.new(640, 352, 3)` (mapa 20×11, zoom 3)
+- `Camera.new(640, 352, 3)` usa un mapa de prueba de 20×11 con zoom 3; es un fixture del test, distinto del mapa actual de 80×11 y la escala 1x del juego.
 - Verifica:
   - Estado inicial (0,0)
   - Follow: `update(dt, 320, 176)` → cámara centra en target
@@ -113,6 +114,12 @@
   6. Camera bounds en extremos
   7. `worldToScreen` produce coords válidas
   8. `map:update(dt)` no error
+- Este test cubre el pipeline de movimiento/cámara; no valida la máquina de estados de vidas y fin de etapa en `main.lua`.
+
+#### `test_enemy.lua` (Dude Monster inicial)
+- Crea un enemigo con mundo `bump` y comprueba posición inicial y bandera `isEnemy`.
+- Verifica que se orienta y mueve horizontalmente hacia un jugador situado a su derecha o izquierda, y que usa la animación `walk`.
+- Son 9 checks. Este test no valida todavía daño al jugador, combate ni el flujo completo de vidas/game over/fin de etapa.
 
 ---
 
@@ -120,7 +127,7 @@
 
 ### Dispatcher `--test`
 ```lua
--- love . --test=input,animation,player,tilemap,bump,camera,full
+-- love . --test=input,animation,player,tilemap,bump,camera,full,enemy
 -- love . --test=full        # alias --selftest
 -- love .                    # juego normal
 ```
@@ -162,17 +169,26 @@ love.load(args)
 ```
 
 ### Archivos de salida
+
+Todos los resultados `.txt` de los selftests se deben guardar siempre en:
+`C:\Users\Admin\Desktop\AI and Programing\Proyects\LOVE2D\PROYECTO DE JUEGO SMB\Tests Results`
+
+`src/selftest/runner.lua` escribe los reportes directamente allí; no guardarlos en la raíz del proyecto ni en la carpeta antigua `Tests`.
+
 ```
 PROYECTO DE JUEGO SMB/
-├── selftest_input.txt
-├── selftest_animation.txt
-├── selftest_player.txt
-├── selftest_tilemap.txt
-├── selftest_bump.txt
-├── selftest_camera.txt
-├── selftest_full.txt
-└── (cada uno con [PASS]/[FAIL] + [SUMMARY] N/N PASS)
+└── Tests Results/
+    ├── selftest_input.txt
+    ├── selftest_animation.txt
+    ├── selftest_player.txt
+    ├── selftest_tilemap.txt
+    ├── selftest_bump.txt
+    ├── selftest_camera.txt
+    ├── selftest_full.txt
+    └── selftest_enemy.txt
 ```
+
+Cada reporte contiene líneas `[PASS]`/`[FAIL]` y un `[SUMMARY] N/N PASS`.
 
 ### Exit codes
 - `0` = todos los tests pedidos pasan
@@ -192,14 +208,15 @@ PROYECTO DE JUEGO SMB/
 7. **`Input.force` design**: `previous = not value` para que `isPressed`/`isReleased` disparen en el frame correcto
 8. **Estandarización Top-Left (x, y)**: bump.lua opera con coordenadas top-left; enviar centro del sprite a `world:move()` generaba desplazamiento por frame. Usar top-left en la entidad resolvió la física.
 9. **Desempacado de `Tilemap.getBounds`**: `Tilemap.getBounds` devuelve 4 valores (`minX, minY, maxX, maxY`). Al desempacar como `local _, _, mapW, mapH` la cámara recibe el ancho/alto real del mapa.
-10. **Resultado global**: **157 / 157 checks PASSED (100%)** en `--test=input,animation,player,tilemap,bump,camera,full`.
+10. **Ejecución del 29 de septiembre de 2026**: **157/157** checks en los siete módulos originales y **9/9** en `enemy` (166/166 en total), con código de salida 0.
 
 ---
 
 ## Próximos pasos recomendados
 
-- [ ] Añadir test `test_enemies.lua` cuando exista entidad enemiga
+- [x] Añadir `test_enemy.lua` para creación, orientación, movimiento y animación iniciales
+- [ ] Añadir pruebas de la interacción jugador-enemigo y de las transiciones muerte/respawn/game over/fin de etapa
 - [ ] Añadir test `test_scene.lua` para SceneManager
-- [ ] Integrar en CI (GitHub Actions: `lovec . --test=input,animation,player,tilemap,bump,camera,full`)
+- [ ] Integrar en CI (GitHub Actions: `lovec . --test=input,animation,player,tilemap,bump,camera,full,enemy`)
 - [ ] Test de regresión visual: hash de frame renderizado vs baseline (opcional)
 - [ ] Medir coverage con `luacov` si el proyecto crece

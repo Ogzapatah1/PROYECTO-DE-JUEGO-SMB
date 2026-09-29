@@ -12,6 +12,7 @@
 local Input     = require("src/input")
 local Animation = require("src/animation")
 local Player    = require("src/entities/player")
+local Enemy     = require("src/entities/enemy")
 local Tilemap   = require("src/tilemap")
 local Camera    = require("src/camera")
 
@@ -22,11 +23,17 @@ local bump = require("lib/bump")
 
 
 -- ─── CONFIG ───────────────────────────────────────────────────────────────────
+-- ─── CONFIG ───────────────────────────────────────────────────────────────────
 -- All in one place so it's easy to change.
 
-local MAP_PATH     = "assets/maps/level_1_1.lua"
-local CAMERA_SCALE = 1.5        -- pixel-art zoom
-local BUMP_CELL    = 32       -- bump world cell size (matches tile size)
+local MAP_PATH           = "assets/maps/level_1_1.lua"
+local CAMERA_SCALE        = 1        -- pixel-art zoom
+local BUMP_CELL          = 32       -- bump world cell size (matches tile size)
+local PIT_Y               = 350      -- y position threshold for falling into pit
+local INITIAL_LIVES       = 3        -- starting lives
+local DEATH_DELAY         = 5.0      -- seconds to show "YOU DIED!" screen
+local GAMEOVER_DELAY      = 6.0      -- seconds to show "GAME OVER!" screen
+local STAGE_FINISH_DELAY  = 5.0      -- seconds to show ending / no more stages screen
 
 
 -- ─── GLOBALS (initialized in love.load) ───────────────────────────────────────
@@ -34,6 +41,46 @@ local map
 local world
 local player
 local camera
+local enemies = {}
+
+local lives        = INITIAL_LIVES
+local currentStage = 1
+local gameState    = "playing"   -- "playing", "died", "game_over", "stage_finished", "no_more_stages", "ending"
+local stateTimer   = 0
+
+
+local function spawnDudeMonster()
+    for _, e in ipairs(enemies) do
+        if world and world:hasItem(e) then world:remove(e) end
+    end
+    enemies = {}
+
+    local _, _, mapW, _ = Tilemap.getBounds(map)
+    local offset = math.random(150, 250)
+    if math.random() > 0.5 and player.x > 300 then
+        offset = -offset
+    end
+    local enemyX = math.min(mapW - 64, math.max(64, player.x + offset))
+    local enemyY = player.y - 10
+    table.insert(enemies, Enemy.new(enemyX, enemyY, world))
+end
+
+-- ─── RESPAWN PLAYER ───────────────────────────────────────────────────────────
+local function respawnPlayer()
+    local spawnX, spawnY = Tilemap.getSpawn(map, "player_spawn")
+    if not spawnX then
+        spawnX, spawnY = map.width * map.tilewidth / 2, map.tileheight * 4
+    end
+    player.x = spawnX
+    player.y = spawnY
+    player.vx = 0
+    player.vy = 0
+    player.grounded = true
+    player.anim:setState("idle")
+    world:update(player, player.x, player.y)
+
+    spawnDudeMonster()
+end
 
 
 -- ─── LOAD GAME ───────────────────────────────────────────────────────────────
@@ -68,6 +115,15 @@ local function loadGame()
     -- Camera with world bounds (Tilemap.getBounds returns minX, minY, maxX, maxY)
     local _, _, mapW, mapH = Tilemap.getBounds(map)
     camera = Camera.new(mapW, mapH, CAMERA_SCALE)
+
+    -- Reset lives, stage, and state
+    lives = INITIAL_LIVES
+    currentStage = 1
+    gameState = "playing"
+    stateTimer = 0
+
+    -- Spawn initial Dude_Monster enemy
+    spawnDudeMonster()
 end
 
 
@@ -151,23 +207,84 @@ end
 function love.update(dt)
     Input.update()    -- must be FIRST — all other systems read from input
 
-    player:update(dt)
+    if gameState == "playing" then
+        player:update(dt)
 
-    -- Update map animations (animated tiles, etc.)
-    map:update(dt)
+        -- Update enemies (approach player)
+        for _, enemy in ipairs(enemies) do
+            enemy:update(dt, player.x)
+        end
 
-    -- Camera follows player center
-    camera:update(dt, player.x + player.width / 2, player.y + player.height / 2)
+        -- Update map animations (animated tiles, etc.)
+        map:update(dt)
+
+        -- Camera follows player center
+        camera:update(dt, player.x + player.width / 2, player.y + player.height / 2)
+
+        -- Check end of stage reached (player reaches right edge of level)
+        local _, _, mapW, _ = Tilemap.getBounds(map)
+        if player.x >= mapW - 64 then
+            gameState = "stage_finished"
+            stateTimer = 0
+        -- Pit death check (player falls below stage threshold)
+        elseif player.y >= PIT_Y then
+            lives = lives - 1
+            if lives > 0 then
+                gameState = "died"
+                stateTimer = DEATH_DELAY
+            else
+                gameState = "game_over"
+                stateTimer = GAMEOVER_DELAY
+            end
+        end
+
+    elseif gameState == "died" then
+        stateTimer = stateTimer - dt
+        if stateTimer <= 0 then
+            respawnPlayer()
+            gameState = "playing"
+        end
+
+    elseif gameState == "game_over" then
+        stateTimer = stateTimer - dt
+        if stateTimer <= 0 then
+            -- Reset game completely
+            lives = INITIAL_LIVES
+            respawnPlayer()
+            gameState = "playing"
+        end
+
+    elseif gameState == "no_more_stages" then
+        stateTimer = stateTimer - dt
+        if stateTimer <= 0 then
+            love.event.quit()
+        end
+
+    elseif gameState == "ending" then
+        stateTimer = stateTimer - dt
+        if stateTimer <= 0 then
+            love.event.quit()
+        end
+    end
 end
 
 
 -- ─── LOVE.KEYPRESSED ─────────────────────────────────────────────────────────
--- Hotkey shortcuts (e.g. press R to reload map from disk live)
+-- Hotkey shortcuts (e.g. press R to reload map from disk live, C/F on stage clear)
 
 function love.keypressed(key)
-    if key == "r" then
+    local k = key:lower()
+    if k == "r" then
         print("[GAME] Reloading level from disk...")
         loadGame()
+    elseif gameState == "stage_finished" then
+        if k == "c" then
+            gameState = "no_more_stages"
+            stateTimer = STAGE_FINISH_DELAY
+        elseif k == "f" then
+            gameState = "ending"
+            stateTimer = STAGE_FINISH_DELAY
+        end
     end
 end
 
@@ -185,18 +302,95 @@ function love.draw()
     -- Draw map
     map:draw(tx, ty, camera.scale)
 
-    -- Draw player with SAME transform
+    -- Draw player & enemies with SAME transform
     love.graphics.push()
     love.graphics.translate(love.graphics.getWidth() / 2, love.graphics.getHeight() / 2)
     love.graphics.scale(camera.scale)
     love.graphics.translate(-camera.x, -camera.y)
     player:draw()
+    for _, enemy in ipairs(enemies) do
+        enemy:draw()
+    end
     love.graphics.pop()
 
     -- Debug HUD (screen coordinates, no camera transform)
     local info = player:getInfo()
     love.graphics.print(("pos (%.0f, %.0f)  vel (%.0f, %.0f)"):format(info.x, info.y, info.vx, info.vy), 10, 10)
-    love.graphics.print("grounded: " .. tostring(info.grounded) .. "   anim: " .. info.anim, 10, 30)
+    love.graphics.print(("grounded: %s   anim: %s   lives: %d   stage: %d"):format(tostring(info.grounded), info.anim, lives, currentStage), 10, 30)
     love.graphics.print("arrows=move  X=run  Z=jump  R=reload map", 10, 50)
     love.graphics.print(("cam (%.0f, %.0f)"):format(camera.x, camera.y), 10, 70)
+
+    -- Overlay screens (Death / Game Over / Stage Clear / Ending)
+    local screenW = love.graphics.getWidth()
+    local screenH = love.graphics.getHeight()
+    local font    = love.graphics.getFont()
+
+    if gameState == "died" then
+        love.graphics.setColor(0, 0, 0, 0.75)
+        love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+
+        love.graphics.setColor(1, 0.3, 0.3, 1)
+        local t1 = "YOU DIED!"
+        love.graphics.print(t1, math.floor((screenW - font:getWidth(t1)) / 2), math.floor(screenH / 2 - 30))
+
+        love.graphics.setColor(1, 1, 1, 1)
+        local t2 = ("You have %d %s left"):format(lives, lives == 1 and "life" or "lives")
+        love.graphics.print(t2, math.floor((screenW - font:getWidth(t2)) / 2), math.floor(screenH / 2))
+
+        local t3 = ("Restarting stage in %d..."):format(math.ceil(stateTimer))
+        love.graphics.setColor(0.8, 0.8, 0.8, 1)
+        love.graphics.print(t3, math.floor((screenW - font:getWidth(t3)) / 2), math.floor(screenH / 2 + 30))
+        love.graphics.setColor(1, 1, 1, 1)
+
+    elseif gameState == "game_over" then
+        love.graphics.setColor(0, 0, 0, 0.88)
+        love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+
+        love.graphics.setColor(1, 0.1, 0.1, 1)
+        local t1 = "GAME OVER!"
+        love.graphics.print(t1, math.floor((screenW - font:getWidth(t1)) / 2), math.floor(screenH / 2 - 20))
+
+        love.graphics.setColor(1, 1, 1, 1)
+        local t2 = ("Restarting game in %d..."):format(math.ceil(stateTimer))
+        love.graphics.print(t2, math.floor((screenW - font:getWidth(t2)) / 2), math.floor(screenH / 2 + 15))
+        love.graphics.setColor(1, 1, 1, 1)
+
+    elseif gameState == "stage_finished" then
+        love.graphics.setColor(0, 0, 0, 0.82)
+        love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+
+        love.graphics.setColor(1, 0.85, 0.2, 1)
+        local t1 = ("Congratulations!, you finish stage %d"):format(currentStage)
+        love.graphics.print(t1, math.floor((screenW - font:getWidth(t1)) / 2), math.floor(screenH / 2 - 20))
+
+        love.graphics.setColor(1, 1, 1, 1)
+        local t2 = "Press C to continue or F to finish"
+        love.graphics.print(t2, math.floor((screenW - font:getWidth(t2)) / 2), math.floor(screenH / 2 + 15))
+
+    elseif gameState == "no_more_stages" then
+        love.graphics.setColor(0, 0, 0, 0.88)
+        love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+
+        love.graphics.setColor(1, 0.85, 0.2, 1)
+        local t1 = "Sorry, no more Stages available!"
+        love.graphics.print(t1, math.floor((screenW - font:getWidth(t1)) / 2), math.floor(screenH / 2 - 20))
+
+        love.graphics.setColor(0.8, 0.8, 0.8, 1)
+        local t2 = ("Stopping game in %d..."):format(math.ceil(stateTimer))
+        love.graphics.print(t2, math.floor((screenW - font:getWidth(t2)) / 2), math.floor(screenH / 2 + 15))
+        love.graphics.setColor(1, 1, 1, 1)
+
+    elseif gameState == "ending" then
+        love.graphics.setColor(0, 0, 0, 0.88)
+        love.graphics.rectangle("fill", 0, 0, screenW, screenH)
+
+        love.graphics.setColor(0.3, 0.8, 1, 1)
+        local t1 = "Ending..."
+        love.graphics.print(t1, math.floor((screenW - font:getWidth(t1)) / 2), math.floor(screenH / 2 - 20))
+
+        love.graphics.setColor(0.8, 0.8, 0.8, 1)
+        local t2 = ("Stopping game in %d..."):format(math.ceil(stateTimer))
+        love.graphics.print(t2, math.floor((screenW - font:getWidth(t2)) / 2), math.floor(screenH / 2 + 15))
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 end

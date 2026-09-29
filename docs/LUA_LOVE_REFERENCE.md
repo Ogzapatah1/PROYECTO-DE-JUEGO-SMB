@@ -75,7 +75,7 @@ end
 local f = io.open("selftest_result.txt", "w")
 
 -- ✅ BIEN: ruta absoluta conocida
-local RESULT_DIR = "C:\\Users\\Admin\\Desktop\\AI and Programing\\Proyects\\LOVE2D\\PROYECTO DE JUEGO SMB"
+local RESULT_DIR = "C:\\Users\\Admin\\Desktop\\AI and Programing\\Proyects\\LOVE2D\\PROYECTO DE JUEGO SMB\\Tests Results"
 local f = io.open(RESULT_DIR .. "\\selftest_result.txt", "w")
 
 -- ✅ BIEN: love.filesystem (usa save dir, portable)

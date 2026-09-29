@@ -173,11 +173,11 @@ Import sprite sheets + tilemap JSON into Love2D
 - Basic physics (gravity, velocity, jumping)
 - Flat ground collision
 
-### Phase 2 — World (Completed & Tested)
+### Phase 2 — World (Implemented)
 - [x] Tilemap module with STI
 - [x] Tile-based collision via bump.lua (Top-left coordinate alignment)
-- [x] Camera module with world bounds clamping (640x352 map size)
-- [x] Automated test suite (157 selftests passing at 100%)
+- [x] Camera module with world bounds clamping (current map: 80x11 tiles / 2560x352 pixels; current camera scale: 1x)
+- [x] Automated selftests (157 original checks plus 9 enemy checks in the latest saved reports)
 - [x] Live level hot-reload (R key)
 
 ### Phase 3 — Game Feel
@@ -186,10 +186,14 @@ Import sprite sheets + tilemap JSON into Love2D
 - Screen transitions via Scene Manager
 
 ### Phase 4 — Enemies and Gameplay
-- Entity system
-- Enemy movement and basic AI
-- Collectibles, hazards
-- Lives, score, game over
+- [x] Initial Dude Monster entity: animation, gravity, terrain collision, and horizontal pursuit of the player
+- [x] Three lives, pit death, respawn, and game over
+- [x] End-of-stage prompt with `C` (no further stage yet) and `F` (finish)
+- [ ] Define player-enemy contact, damage, and defeat rules; the two currently pass through each other
+- [ ] Add more enemy behavior, collectibles, and interactive hazards
+- [ ] Add score and a finished gameplay HUD
+
+The current gameplay additions and expanded map are in the working tree. All eight selftest suites passed on September 29, 2026 (166/166 checks); the life and stage transitions still need dedicated tests.
 
 ---
 

@@ -12,7 +12,7 @@ The primary goals of this project are:
 1. **Engine Mastery & Educational Clarity**: To build a clean, extensible 2D platformer engine in LÖVE2D without relying on monolithic frameworks or heavy Box2D physics.
 2. **Strict Modular Architecture**: To establish clear boundaries between game systems (Input, Animation, Physics, Tilemaps, Camera, Entities, Scenes) so any module can be modified or tested independently.
 3. **High-Precision Game Feel**: To replicate responsive platforming mechanics such as variable jump height, gravity integration, wall/ceiling slide responses, and smooth camera tracking with map clamping.
-4. **Developer Workflow & Reliability**: To provide built-in automated testing (`157/157 PASS` checks) and instant live hot-reloading (`R` key) for rapid level editing in Tiled.
+4. **Developer Workflow & Reliability**: To provide built-in automated testing (157 core checks plus 9 enemy checks in the latest saved reports) and instant live hot-reloading (`R` key) for rapid level editing in Tiled.
 
 ---
 
@@ -25,7 +25,7 @@ The primary goals of this project are:
 | **[anim8](https://github.com/kikito/anim8)** | Sprite sheet animation library. Handles frame timing, looping, sprite clipping (`Quads`), and animation state stepping. |
 | **[STI (Simple Tiled Implementation)](https://github.com/karai17/Simple-Tiled-Implementation)** | Tiled map loader for LÖVE2D. Reads exported `.lua` tilemaps, renders tile layers, and integrates collidable tiles directly into the `bump.lua` physics world. |
 | **[Tiled Map Editor](https://www.mapeditor.org/)** | External visual level editor used to lay out tile maps, spawn points, and collision object layers. |
-| **Custom Camera Module (`src/camera.lua`)** | Custom-built camera replacing HUMP camera to avoid double-transformation bugs with STI. Manages 3x pixel-art scaling, viewport centering, and map boundary clamping. |
+| **Custom Camera Module (`src/camera.lua`)** | Custom-built camera replacing HUMP camera to avoid double-transformation bugs with STI. Manages viewport centering, configurable scale (currently 1x), and map boundary clamping. |
 | **Automated Test Runner (`src/selftest/`)** | Custom test suite framework and test dispatcher (`--test`) verifying input states, animations, player physics, map loading, camera behavior, and tile collisions. |
 
 ---
@@ -34,9 +34,9 @@ The primary goals of this project are:
 
 The project adheres to five key design principles:
 
-### 1. Separation of Concerns & Zero-Logic Orchestrator
-- `main.lua` contains **no game logic**. It acts strictly as a "table of contents" and orchestrator, requiring modules and dispatching calls to `love.load`, `love.update`, `love.draw`, and `love.keypressed`.
-- Every game feature lives in its own dedicated file inside `src/`.
+### 1. Separation of Concerns
+- `main.lua` wires the modules together and currently also owns the lives, death/respawn, game-over, stage-finish, and enemy-spawn flow.
+- Input, animation, movement, map loading, camera, and enemy behavior live in focused modules inside `src/`.
 
 ### 2. Object-Oriented Instantiation & Clean Interfaces
 - **Static Singletons** (e.g., [`src/input.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/input.lua)) use **Dot notation** (`Input.isDown("jump")`) because there is only one global input manager.
@@ -53,7 +53,7 @@ The project adheres to five key design principles:
   - `isReleased(action)`: Release event triggered for exactly 1 frame (e.g., variable jump cut).
 
 ### 5. Automated Self-Testing & Live Feedback Loop
-- The engine includes a headless/integrated unit testing dispatcher. Running `lovec . --test` executes 157 automated checks with 100% test coverage across 7 test suites.
+- The engine includes an integrated selftest dispatcher. The seven original suites contain 157 checks; the separate `enemy` suite adds 9. The latest saved reports show all 166 passing. These checks do not measure code coverage or test the full game-state flow.
 - Pressing `R` in-game triggers live hot-reloading of map exports from disk without restarting the game.
 
 ---
@@ -68,7 +68,8 @@ PROYECTO DE JUEGO SMB/
 │
 ├── assets/                              # Game art assets & level maps
 │   ├── maps/
-│   │   └── level_1_1.lua                # Tiled map export (20x11 tiles, ground + spawn layers)
+│   │   ├── level_1_1.tmx                # Editable Tiled source
+│   │   └── level_1_1.lua                # Tiled map export (currently 80x11 tiles)
 │   ├── sounds/                          # Audio directory (reserved for Phase 3)
 │   └── sprites/
 │       ├── Pink_Monster_*.png           # Horizontal PNG animation strips (32x32px per frame)
@@ -82,18 +83,20 @@ PROYECTO DE JUEGO SMB/
 │
 ├── src/                                 # Game source code & core engine modules
 │   ├── animation.lua                    # Multi-file state animation loader & anim8 wrapper
-│   ├── camera.lua                       # Viewport tracking, 3x zoom scaling, & boundary clamping
+│   ├── camera.lua                       # Viewport tracking, configurable scale, & boundary clamping
 │   ├── input.lua                        # Two-frame input engine with customizable key bindings
 │   ├── tilemap.lua                      # STI map loader, bump collider registration, & bounds helper
 │   ├── entities/
-│   │   └── player.lua                   # Player class (physics, gravity, jump, bump collision, anims)
+│   │   ├── player.lua                   # Player class (physics, gravity, jump, bump collision, anims)
+│   │   └── enemy.lua                    # Dude Monster chase movement, gravity, terrain collision, anims
 │   ├── scenes/                          # Reserved for Phase 3 scene management
 │   └── selftest/                        # Automated unit testing suite
 │       ├── runner.lua                   # Test assertion runner & summary reporter
 │       ├── test_animation.lua           # Selftest: animation state transitions & frame stepping
 │       ├── test_bump.lua                # Selftest: AABB box collisions, tile sliding, & responses
 │       ├── test_camera.lua              # Selftest: viewport centering & map boundary clamping
-│       ├── test_full.lua                # Selftest: comprehensive suite executing all 157 checks
+│       ├── test_enemy.lua               # Selftest: initial Dude Monster behavior (9 checks)
+│       ├── test_full.lua                # Selftest: core integration flow
 │       ├── test_input.lua               # Selftest: input keybinding & snapshot state testing
 │       ├── test_player.lua              # Selftest: player gravity, velocity integration, & movement
 │       ├── test_tilemap.lua             # Selftest: STI loading, tile bounds, & spawn point parsing
@@ -118,9 +121,11 @@ PROYECTO DE JUEGO SMB/
 - **[`main.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/main.lua)**: Initializes game state, sets pixel-art filter (`nearest`), wires input/player/tilemap/camera, handles camera transform math in `love.draw`, and parses `--test` CLI flags.
 - **[`src/input.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/input.lua)**: Maps virtual actions (`left`, `right`, `jump`, `run`) to keyboard keys. Maintains `downState` and `prevState` tables.
 - **[`src/animation.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/animation.lua)**: Accepts state definitions mapping animation names to PNG strip paths and frame counts. Manages frame stepping and guard-clause state changes.
-- **[`src/camera.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/camera.lua)**: Calculates target camera position based on player center, clamps coordinates between `minX` and `maxX` boundaries, and handles `scale = 3`.
+- **[`src/camera.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/camera.lua)**: Calculates target camera position based on player center and clamps it to map boundaries. `main.lua` currently sets `CAMERA_SCALE = 1`.
 - **[`src/tilemap.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/tilemap.lua)**: Loads STI maps, initializes collidable tiles via `map:bump_init(world)`, extracts spawn object layers, and returns map boundary dimensions.
 - **[`src/entities/player.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/entities/player.lua)**: Encapsulates player physics (acceleration, gravity, max speed, variable jump), registers bounding box in `bump.lua`, updates position with `world:move()`, and synchronizes state machine with animation states (`idle`, `walk`, `run`, `jump`).
+- **`src/entities/enemy.lua`**: Creates a Dude Monster with idle/walk animation, gravity, terrain collision through `bump.lua`, and horizontal movement toward the player's position. Player and enemy currently pass through each other; combat and damage are not implemented.
+- **`main.lua` gameplay state**: Starts with three lives. Falling below `y = 350` costs one life, shows a death overlay for 5 seconds, then respawns the player and enemy. At zero lives, a game-over overlay appears for 6 seconds before the game restarts with three lives. Reaching the right edge of the map opens a stage-finish prompt; `C` shows that no more stages are available and `F` ends the game, each after a 5-second message.
 
 ---
 
@@ -138,7 +143,7 @@ All architectural decisions are documented in detail in [`docs/DECISIONS.md`](fi
 
 ### 3. Decision #005: World Scale & STI Camera Integration
 - **Issue**: Combining HUMP camera with STI's native rendering (`map:draw(tx, ty, sx)`) caused double transformation (translating and scaling twice).
-- **Solution**: Replaced HUMP camera with a clean custom camera (`src/camera.lua`). Standardized world physics to 32px tile space and isolated visual 3x zoom strictly inside the camera transform in `love.draw`.
+- **Solution**: Replaced HUMP camera with a clean custom camera (`src/camera.lua`). Standardized world physics to 32px tile space and isolated configurable visual scaling inside the camera transform in `love.draw`.
 
 ### 4. Decision #006: Top-Left Coordinate Standardization & Bump Drift Fix
 - **Issue**: The original player entity stored its center position in `(x, y)`. When passing goal coordinates to `bump.lua`'s `world:move(self, goalX, goalY)`, bump interpreted them as top-left corner coordinates. This created a cumulative 16px displacement error per frame, breaking ground checks and wall collision.
@@ -152,9 +157,10 @@ All architectural decisions are documented in detail in [`docs/DECISIONS.md`](fi
 
 ## 🚦 Current Project Status & Next Steps
 
-### Current Status: Phase 2 — 100% Complete & Verified ✅
+### Current Status: Core systems complete; first gameplay systems underway
 - **Phase 1 (Core Engine)**: Fully complete. Input system, player physics, variable jump, gravity, multi-file animation engine operational.
-- **Phase 2 (World & Physics)**: Fully complete. STI map loading, `bump.lua` AABB collision resolution, custom camera tracking with map clamping, hot-reloading, and 157 selftest checks passing at **100% PASS**.
+- **Phase 2 (World & Physics)**: STI map loading, `bump.lua` AABB collision resolution, custom camera tracking with map clamping, and hot-reloading are implemented.
+- **Gameplay added**: Three lives, pit death and respawn, game over, a stage-finish prompt, and one Dude Monster that animates and chases the player while colliding with terrain. All eight selftest suites passed on September 29, 2026 (166/166 checks). The life and stage transitions still need dedicated tests.
 
 ### Next Steps & Roadmap 🚀
 
@@ -165,10 +171,13 @@ All architectural decisions are documented in detail in [`docs/DECISIONS.md`](fi
 - [ ] Implement a `SceneManager` module for level transitions, title screens, and game over screens.
 
 #### 👾 Phase 4 — Enemies & Gameplay Mechanics
-- [ ] Build a generic base Entity system for enemies.
+- [x] Add an initial Dude Monster entity with animation, gravity, terrain collision, and chase movement.
+- [x] Add three lives, pit death/respawn, game over, and an end-of-stage prompt.
+- [ ] Add player-enemy interaction (damage, stomp, or another chosen rule) and test it.
+- [ ] Build a generic base Entity system if multiple enemy types require it.
 - [ ] Implement enemy AI patrol behaviors (Goomba / Pink Monster patrol).
 - [ ] Add collectibles (coins, power-ups) and interactive hazard tiles (pits, spikes).
-- [ ] Implement player health/lives system, score tracking, and HUD UI elements.
+- [ ] Add score tracking and a finished gameplay HUD; lives currently appear in the debug HUD.
 
 ---
 
@@ -189,11 +198,18 @@ lovec .
 - **Z**: Jump (Variable jump height: hold for higher jump, release early for short hop)
 - **X**: Run (Increased movement speed)
 - **R**: Hot-reload map from disk live
+- **C / F**: At the stage-finish prompt, continue (no further stage yet) or finish
 
 ### Running Automated Selftests
-Run the complete selftest suite (157 checks) via CLI:
+All selftest `.txt` reports are stored in `C:\Users\Admin\Desktop\AI and Programing\Proyects\LOVE2D\PROYECTO DE JUEGO SMB\Tests Results`. The test runner writes them there automatically.
+
+Run the core integration selftest via CLI:
 ```bash
 lovec . --test=full
+```
+Run all eight current suites (166 checks in the latest saved reports):
+```bash
+lovec . --test=input,animation,player,tilemap,bump,camera,full,enemy
 ```
 Run specific module tests:
 ```bash

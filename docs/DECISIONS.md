@@ -237,7 +237,23 @@ Para verificar rápidamente la física, el mapa, la cámara y el cargador de map
 
 **Resultado:** El viewport muestra un área de juego mucho más amplia y cómoda, y el jugador puede saltar y aterrizar con precisión sobre plataformas de 2 tiles de altura.
 
+**Estado posterior:** La versión actual de `main.lua` usa `CAMERA_SCALE = 1` con un mapa de 80×11 tiles. `JUMP_SPEED = -340` sigue vigente. El valor 2x anterior queda documentado aquí como decisión histórica.
+
+---
+
+## #009 — Interacción entre jugador y Dude Monster
+
+**Fecha:** Septiembre 2026
+**Estado:** ⬜ Pendiente
+
+**Situación:** Ya existe un Dude Monster que se anima, aplica gravedad, colisiona con el terreno y camina hacia el jugador. El juego también tiene 3 vidas, muerte por foso, respawn, game over y fin de etapa. Actualmente las colisiones jugador-enemigo usan `cross`, por lo que se atraviesan sin daño ni derrota del enemigo.
+
+**Opciones por evaluar:** daño al tocarlo, derrota mediante salto, otra regla de interacción, o una combinación. Falta decidir la regla exacta y cómo afectará las vidas y el respawn.
+
+**Decisión:** Pendiente.
+
+**Resultado:** Pendiente; la implementación actual solo cubre movimiento y colisión con el terreno.
+
 ---
 
 _(Las nuevas decisiones se agregan abajo en orden cronológico)_
-
