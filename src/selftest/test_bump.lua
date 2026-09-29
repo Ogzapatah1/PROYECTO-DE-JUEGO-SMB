@@ -27,7 +27,7 @@ local function run()
     -- ─── Collidable tiles registered ─────────────────────────────────────────
     local items = world:getItems()
     c:truthy("world has collidable items", #items > 0)
-    c:truthy("multiple collidables", #items >= 49, ("got %d"):format(#items))  -- our map has ~49 solid tiles
+    c:truthy("multiple collidables", #items >= 49, ("got %d"):format(#items))  -- minimum regression threshold; the larger map has more tiles
 
     -- Verify each item has rect
     for _, item in ipairs(items) do
@@ -67,8 +67,8 @@ local function run()
     c:truthy("moves right on bump", player.x > startX + 1)
 
     -- ─── Hit wall (pillar at col 17) ─────────────────────────────────────────
-    -- Pillar is at x ≈ 17*32 = 544. Player at spawn 160, moves right.
-    -- Reset player to left of pillar
+    -- Pillar is at x ≈ 17*32 = 544. Move the player to x = 400
+    -- so this check starts immediately to the left of that pillar.
     player.x = 400
     player.y = 256
     player.vx = 0

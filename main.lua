@@ -1,7 +1,7 @@
 -- main.lua
--- This file's only job is to wire together all the modules.
--- It should never contain game logic itself.
--- Think of it as the "table of contents" for your game.
+-- Wires together the game modules and LÖVE callbacks.
+-- It also owns the current game flow: lives, respawn, game over,
+-- stage finish, and enemy spawning. Entity movement stays in src/entities/.
 
 --UPPERCASE in the comments indicate main sections (REQUIRE, LOAD, etc)
 -- ─── REQUIRE MODULES ─────────────────────────────────────────────────────────
@@ -15,6 +15,7 @@ local Player    = require("src/entities/player")
 local Enemy     = require("src/entities/enemy")
 local Tilemap   = require("src/tilemap")
 local Camera    = require("src/camera")
+local Gameplay  = require("src/gameplay")
 
 local bump = require("lib/bump")
 
@@ -22,7 +23,6 @@ local bump = require("lib/bump")
 -- local SceneManager = require("src/scene_manager")
 
 
--- ─── CONFIG ───────────────────────────────────────────────────────────────────
 -- ─── CONFIG ───────────────────────────────────────────────────────────────────
 -- All in one place so it's easy to change.
 
@@ -49,20 +49,15 @@ local gameState    = "playing"   -- "playing", "died", "game_over", "stage_finis
 local stateTimer   = 0
 
 
-local function spawnDudeMonster()
+local function spawnDudeMonsters()
     for _, e in ipairs(enemies) do
         if world and world:hasItem(e) then world:remove(e) end
     end
     enemies = {}
 
-    local _, _, mapW, _ = Tilemap.getBounds(map)
-    local offset = math.random(150, 250)
-    if math.random() > 0.5 and player.x > 300 then
-        offset = -offset
+    for _, point in ipairs(Tilemap.getSpawns(map, "dude_monster_spawn")) do
+        enemies[#enemies + 1] = Enemy.new(point.x, point.y, world)
     end
-    local enemyX = math.min(mapW - 64, math.max(64, player.x + offset))
-    local enemyY = player.y - 10
-    table.insert(enemies, Enemy.new(enemyX, enemyY, world))
 end
 
 -- ─── RESPAWN PLAYER ───────────────────────────────────────────────────────────
@@ -79,7 +74,7 @@ local function respawnPlayer()
     player.anim:setState("idle")
     world:update(player, player.x, player.y)
 
-    spawnDudeMonster()
+    spawnDudeMonsters()
 end
 
 
@@ -109,7 +104,7 @@ local function loadGame()
         spawnX, spawnY = map.width * map.tilewidth / 2, map.tileheight * 4
     end
 
-    -- Create the player (position in world pixels, center of sprite)
+    -- Create the player using top-left world coordinates for its collision box.
     player = Player.new(spawnX, spawnY, world)
 
     -- Camera with world bounds (Tilemap.getBounds returns minX, minY, maxX, maxY)
@@ -122,13 +117,13 @@ local function loadGame()
     gameState = "playing"
     stateTimer = 0
 
-    -- Spawn initial Dude_Monster enemy
-    spawnDudeMonster()
+    -- Spawn each Dude Monster placed in Tiled.
+    spawnDudeMonsters()
 end
 
 
 -- ─── TEST DISPATCHER ─────────────────────────────────────────────────────────
--- --test=input,animation,player,tilemap,bump,camera,full | --selftest (=full) | standalone
+-- --test=input,animation,player,tilemap,bump,camera,full,enemy,gameplay,contact | --selftest (=full) | standalone
 
 local function parseArgs(args)
     local req = {}
@@ -210,7 +205,7 @@ function love.update(dt)
     if gameState == "playing" then
         player:update(dt)
 
-        -- Update enemies (approach player)
+        -- Each enemy decides whether to patrol or pursue the player.
         for _, enemy in ipairs(enemies) do
             enemy:update(dt, player.x)
         end
@@ -221,38 +216,23 @@ function love.update(dt)
         -- Camera follows player center
         camera:update(dt, player.x + player.width / 2, player.y + player.height / 2)
 
-        -- Check end of stage reached (player reaches right edge of level)
+        -- Stage finish wins if the player reaches the exit and an enemy together.
+        -- Enemy contact and falling into a pit share the same death transition.
         local _, _, mapW, _ = Tilemap.getBounds(map)
-        if player.x >= mapW - 64 then
+        local outcome = Gameplay.outcome(player, enemies, mapW, PIT_Y)
+        if outcome == "finish" then
             gameState = "stage_finished"
             stateTimer = 0
-        -- Pit death check (player falls below stage threshold)
-        elseif player.y >= PIT_Y then
-            lives = lives - 1
-            if lives > 0 then
-                gameState = "died"
-                stateTimer = DEATH_DELAY
-            else
-                gameState = "game_over"
-                stateTimer = GAMEOVER_DELAY
-            end
+        elseif outcome == "death" then
+            gameState, lives, stateTimer = Gameplay.loseLife(
+                gameState, lives, stateTimer, DEATH_DELAY, GAMEOVER_DELAY)
         end
 
-    elseif gameState == "died" then
-        stateTimer = stateTimer - dt
-        if stateTimer <= 0 then
-            respawnPlayer()
-            gameState = "playing"
-        end
-
-    elseif gameState == "game_over" then
-        stateTimer = stateTimer - dt
-        if stateTimer <= 0 then
-            -- Reset game completely
-            lives = INITIAL_LIVES
-            respawnPlayer()
-            gameState = "playing"
-        end
+    elseif gameState == "died" or gameState == "game_over" then
+        local shouldRespawn
+        gameState, lives, stateTimer, shouldRespawn = Gameplay.advanceDeath(
+            gameState, lives, stateTimer, dt, INITIAL_LIVES)
+        if shouldRespawn then respawnPlayer() end
 
     elseif gameState == "no_more_stages" then
         stateTimer = stateTimer - dt

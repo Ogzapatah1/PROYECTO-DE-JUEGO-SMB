@@ -244,15 +244,58 @@ Para verificar rápidamente la física, el mapa, la cámara y el cargador de map
 ## #009 — Interacción entre jugador y Dude Monster
 
 **Fecha:** Septiembre 2026
-**Estado:** ⬜ Pendiente
+**Estado:** ✅ Resuelta
 
-**Situación:** Ya existe un Dude Monster que se anima, aplica gravedad, colisiona con el terreno y camina hacia el jugador. El juego también tiene 3 vidas, muerte por foso, respawn, game over y fin de etapa. Actualmente las colisiones jugador-enemigo usan `cross`, por lo que se atraviesan sin daño ni derrota del enemigo.
+**Situación:** Ya existía un Dude Monster que se animaba, aplicaba gravedad, colisionaba con el terreno y caminaba hacia el jugador. El juego también tenía 3 vidas, muerte por foso, respawn, game over y fin de etapa. Las entidades usaban `cross`, por lo que se atravesaban sin activar la muerte.
 
-**Opciones por evaluar:** daño al tocarlo, derrota mediante salto, otra regla de interacción, o una combinación. Falta decidir la regla exacta y cómo afectará las vidas y el respawn.
+**Opciones evaluadas:** muerte al tocarlo, derrota mediante salto u otra regla. Para esta versión se eligió muerte con cualquier contacto; derrotar al enemigo queda para una posible etapa posterior.
 
-**Decisión:** Pendiente.
+**Decisión:** Reducir la velocidad horizontal del Dude Monster de 60 a 45 px/s. Tras mover jugador y enemigo, comprobar el solapamiento de sus cajas de 32×32. Cualquier contacto activa el mismo sistema de muerte que el foso y resta una sola vida. Si el jugador llega al final de la etapa y toca al enemigo en el mismo frame, prevalece la finalización de la etapa.
 
-**Resultado:** Pendiente; la implementación actual solo cubre movimiento y colisión con el terreno.
+**Resultado:** `src/gameplay.lua` centraliza la prioridad de fin de etapa, el contacto, la pérdida de vida y los temporizadores de recuperación. `main.lua` usa estas reglas y conserva el respawn existente. Las pruebas automáticas cubren estas transiciones; el ajuste fino de la sensación de juego queda para partidas completas.
+
+**Estado posterior:** La caja usada para contacto con el jugador se redujo a 20×24 dentro de la caja de terreno de 32×32; la colisión con tiles no cambió. La velocidad de 45 px/s ahora corresponde al estado de ataque; la patrulla usa 30 px/s (ver #011). La prioridad de la meta y el sistema de vidas se conservan.
+
+---
+
+## #010 — Múltiples apariciones de Dude Monster desde Tiled
+
+**Fecha:** Septiembre 2026
+**Estado:** ✅ Resuelta
+
+**Situación:** El juego creaba un solo enemigo con una distancia aleatoria respecto al jugador. Eso impedía diseñar encuentros precisos en el nivel 1.1.
+
+**Decisión:** Usar objetos Point llamados `dude_monster_spawn` en el layer `spawn` de Tiled, junto al `player_spawn` existente. `Tilemap.getSpawns` devuelve todos los puntos coincidentes; `main.lua` crea un enemigo por punto y los recrea en esas posiciones tras una muerte o recarga. Sin puntos, no se crea ningún Dude Monster. Las coordenadas indican la esquina superior izquierda de su caja de terreno de 32×32.
+
+**Resultado:** El nivel 1.1 comienza con puntos en `(320, 256)` y `(672, 256)`. El diseñador puede duplicarlos, moverlos o quitarlos en Tiled, exportar a `.lua` y usar `R` para recargar. La geometría del `.tmx` resalvado y la exportación `.lua` se compararon antes de editar; coincidían en los 880 tiles.
+
+**Estado posterior:** El mapa actual usa cuatro puntos, colocados sobre terreno seguro según #012. Las dos coordenadas anteriores documentan la primera implementación, no las posiciones actuales.
+
+---
+
+## #011 — Patrulla y ataque seguro del Dude Monster
+
+**Fecha:** Septiembre 2026
+**Estado:** ✅ Resuelta
+
+**Situación:** Al perseguir al jugador constantemente, los Dude Monsters podían caminar hacia un foso y caer antes de encontrarlo. También se quería conservar la posibilidad de dar comportamientos distintos a enemigos futuros.
+
+**Decisión:** Guardar `behaviorState` por instancia (`patrol` o `attack`). Las decisiones de dirección, velocidad y cambio de estado viven en `src/ai/dude_monster.lua`; `src/entities/enemy.lua` consulta el terreno por delante mediante `bump.lua` y aplica movimiento, gravedad, colisión y animación. La patrulla comienza hacia la izquierda a 30 px/s y gira antes de un hueco o al topar con una pared. El ataque comienza si el jugador está a 128 px o menos, se mueve a 45 px/s y se detiene ante un hueco. Aunque el jugador se acerque desde el otro lado, espera; vuelve a seguirlo cuando hay suelo seguro en su dirección. Al alejarse más de 176 px, retorna a patrulla. Las dos distancias evitan alternancia rápida de estado.
+
+**Resultado:** Cada enemigo decide por separado, sin cambiar la lógica compartida de vidas ni la prioridad de fin de etapa. Los tests usan un mundo `bump` real para comprobar giro, espera en huecos, reanudación y paredes. El usuario confirmó jugando que los cuatro enemigos del nivel aparecen y funcionan con esta lógica; las distancias y velocidades todavía pueden ajustarse al diseñar encuentros.
+
+---
+
+## #012 — Ubicación segura de apariciones en plataformas
+
+**Fecha:** Septiembre 2026
+**Estado:** ✅ Resuelta
+
+**Situación:** De cuatro Dude Monsters del nivel 1.1, los dos intermedios no se veían. El mapa exportado sí contenía los cuatro puntos y `main.lua` creaba los cuatro enemigos. Los puntos intermedios ubicaban parte de la caja inicial de 32×32 dentro de un tile de suelo y parte sobre un hueco. En el primer movimiento, `bump` resolvía la superposición desplazando el enemigo lateralmente al hueco; después caía por debajo del mapa. Los otros dos también aparecían dentro del suelo, pero eran empujados hacia arriba porque tenían terreno continuo debajo.
+
+**Decisión:** Ajustar los cuatro puntos en `level_1_1.tmx` y `level_1_1.lua` para que su caja inicial esté libre y totalmente sostenida por una plataforma. Los puntos quedan en `(431.925, 256)`, `(736, 256)`, `(1728, 288)` y `(2510.77, 256)`. Mantener la semántica de Tiled: el punto indica la esquina superior izquierda de la caja, no sus pies ni su centro.
+
+**Resultado:** Un selftest del nivel comprueba que ningún enemigo aparezca solapando terreno y que todos permanezcan dentro del mapa y aterrizados después de un segundo de actualización. Las 10 suites pasan con 277/277 checks. Ambos archivos del mapa contienen los mismos 880 tiles y los mismos puntos de aparición. El usuario confirmó en una partida que los cuatro enemigos aparecen y funcionan tras la corrección.
 
 ---
 

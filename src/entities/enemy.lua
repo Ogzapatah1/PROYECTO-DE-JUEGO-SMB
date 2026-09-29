@@ -1,13 +1,14 @@
 -- src/entities/enemy.lua
 --
--- PURPOSE: Own everything about enemy entities (Dude_Monster):
---          spawn position, movement AI (approaching player), animation,
---          gravity, and bump world collision.
+-- PURPOSE: Apply Dude Monster behavior decisions to animation, gravity, and
+--          bump collision. The patrol/attack rules live in src/ai/dude_monster.lua.
 
 local Animation = require("src/animation")
+local Behavior = require("src/ai/dude_monster")
 
 local GRAVITY    = 700    -- px per second²
-local WALK_SPEED = 60     -- px per second when approaching player
+local CONTACT_INSET_X = 6 -- contact only; keep the full 32x32 terrain collider
+local CONTACT_INSET_Y = 4
 
 local animStates = {
     idle = { path = "assets/sprites/enemies/3 Dude_Monster/Dude_Monster_Idle_4.png",  frames = 4, duration = 0.15 },
@@ -29,7 +30,8 @@ function Enemy.new(x, y, world)
     self.vy = 0
     self.grounded = false
     self.world = world
-    self.direction = 1
+    self.direction = -1
+    self.behaviorState = "patrol"
     self.isEnemy = true
 
     -- Build animation controller
@@ -44,7 +46,8 @@ function Enemy.new(x, y, world)
     return self
 end
 
--- Collision filter: pass through player, slide against solid tiles
+-- Pass through the player for movement; Gameplay.outcome applies contact death.
+-- Slide against solid terrain tiles.
 function Enemy.filter(item, other)
     if other.isPlayer or (other.getInfo and other:getInfo()) then
         return "cross"
@@ -52,22 +55,39 @@ function Enemy.filter(item, other)
     return "slide"
 end
 
+function Enemy:getContactBox()
+    return {
+        x = self.x + CONTACT_INSET_X,
+        y = self.y + CONTACT_INSET_Y,
+        width = self.width - CONTACT_INSET_X * 2,
+        height = self.height - CONTACT_INSET_Y * 2,
+    }
+end
+
+local function isTerrain(item)
+    return not item.isPlayer and not item.isEnemy
+end
+
+-- Ask bump whether the leading foot will still have terrain after a step.
+function Enemy:hasGroundAhead(direction, distance)
+    if not self.world then return true end
+    local probeX = direction < 0
+        and self.x - distance - 1
+        or self.x + self.width + distance
+    local _, count = self.world:queryRect(
+        probeX, self.y + self.height + 1, 1, 2, isTerrain)
+    return count > 0
+end
+
 function Enemy:update(dt, playerX)
-    -- AI logic: move towards player position
-    if playerX then
-        local dist = playerX - self.x
-        if math.abs(dist) > 8 then
-            if dist > 0 then
-                self.vx = WALK_SPEED
-                self.direction = 1
-            else
-                self.vx = -WALK_SPEED
-                self.direction = -1
-            end
-        else
-            self.vx = 0
-        end
-    end
+    local playerDx = playerX and playerX - self.x or nil
+    local probeDistance = Behavior.MAX_SPEED * dt
+    local leftSafe = self:hasGroundAhead(-1, probeDistance)
+    local rightSafe = self:hasGroundAhead(1, probeDistance)
+    local speed
+    self.behaviorState, self.direction, speed = Behavior.decide(
+        self.behaviorState, self.direction, playerDx, leftSafe, rightSafe)
+    self.vx = self.direction * speed
 
     -- Apply gravity
     self.vy = self.vy + GRAVITY * dt
@@ -80,11 +100,19 @@ function Enemy:update(dt, playerX)
         local actualX, actualY, cols, len = self.world:move(self, goalX, goalY, Enemy.filter)
 
         self.grounded = false
+        local hitWall = false
         for i = 1, len do
             if cols[i].normal.y == -1 then
                 self.grounded = true
                 self.vy = 0
-                break
+            end
+            if cols[i].normal.x ~= 0 then hitWall = true end
+        end
+
+        if hitWall then
+            self.vx = 0
+            if self.behaviorState == "patrol" then
+                self.direction = -self.direction
             end
         end
 
@@ -98,7 +126,7 @@ function Enemy:update(dt, playerX)
     -- Update sprite direction and animation state
     self.anim:setDirection(self.direction)
     if self.vx ~= 0 then
-        self.anim:setState("walk")
+        self.anim:setState(self.behaviorState == "attack" and "run" or "walk")
     else
         self.anim:setState("idle")
     end

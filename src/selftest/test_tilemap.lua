@@ -66,6 +66,20 @@ local function run()
         c:truthy("spawn Y is valid", spawnY > 0)
     end
 
+    c:truthy("multiple spawn lookup available", type(Tilemap.getSpawns) == "function")
+    if type(Tilemap.getSpawns) ~= "function" then return c:summary() end
+    local points = Tilemap.getSpawns({ layers = { spawn = { objects = {
+        { name = "player_spawn", shape = "point", x = 10, y = 20 },
+        { name = "dude_monster_spawn", shape = "point", x = 320, y = 256 },
+        { name = "dude_monster_spawn", shape = "rectangle", x = 500, y = 256 },
+        { name = "dude_monster_spawn", shape = "point", x = 704, y = 256 },
+    } } } }, "dude_monster_spawn")
+    c:eq("all matching spawn points returned", #points, 2)
+    c:eq("first spawn X preserved", points[1] and points[1].x, 320)
+    c:eq("second spawn X preserved", points[2] and points[2].x, 704)
+    c:eq("spawn Y preserved", points[2] and points[2].y, 256)
+    c:eq("unknown spawn has no random fallback", #Tilemap.getSpawns(map, "missing_spawn"), 0)
+
     -- ─── Bounds ──────────────────────────────────────────────────────────────
     local minX, minY, maxX, maxY = Tilemap.getBounds(map)
     c:eq("bounds min", minX, 0)

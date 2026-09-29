@@ -42,6 +42,21 @@ function Tilemap.getSpawn(map, objectName)
     return nil
 end
 
+-- Return every matching point in map order. Their coordinates mark entity top-lefts.
+function Tilemap.getSpawns(map, objectName)
+    local points = {}
+    local spawnLayer = map.layers["spawn"]
+    if not spawnLayer then return points end
+
+    for _, obj in ipairs(spawnLayer.objects) do
+        if obj.name == objectName and obj.shape == "point" then
+            points[#points + 1] = { x = obj.x, y = obj.y }
+        end
+    end
+
+    return points
+end
+
 
 -- ─── TILEMAP.GETBOUNDS ───────────────────────────────────────────────────────
 -- Return the map bounds in pixels (for camera limits).

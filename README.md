@@ -12,7 +12,7 @@ The primary goals of this project are:
 1. **Engine Mastery & Educational Clarity**: To build a clean, extensible 2D platformer engine in LÖVE2D without relying on monolithic frameworks or heavy Box2D physics.
 2. **Strict Modular Architecture**: To establish clear boundaries between game systems (Input, Animation, Physics, Tilemaps, Camera, Entities, Scenes) so any module can be modified or tested independently.
 3. **High-Precision Game Feel**: To replicate responsive platforming mechanics such as variable jump height, gravity integration, wall/ceiling slide responses, and smooth camera tracking with map clamping.
-4. **Developer Workflow & Reliability**: To provide built-in automated testing (157 core checks plus 9 enemy checks in the latest saved reports) and instant live hot-reloading (`R` key) for rapid level editing in Tiled.
+4. **Developer Workflow & Reliability**: To provide built-in automated testing (277 checks across 10 suites in the latest run) and instant live hot-reloading (`R` key) for rapid level editing in Tiled.
 
 ---
 
@@ -53,7 +53,7 @@ The project adheres to five key design principles:
   - `isReleased(action)`: Release event triggered for exactly 1 frame (e.g., variable jump cut).
 
 ### 5. Automated Self-Testing & Live Feedback Loop
-- The engine includes an integrated selftest dispatcher. The seven original suites contain 157 checks; the separate `enemy` suite adds 9. The latest saved reports show all 166 passing. These checks do not measure code coverage or test the full game-state flow.
+- The engine includes an integrated selftest dispatcher. The latest run passed 277 checks across 10 suites, including Dude Monster patrol/attack behavior, safe Tiled placement, contact death, respawn, game over, and stage-finish priority. These checks do not measure code coverage or replace a playtest.
 - Pressing `R` in-game triggers live hot-reloading of map exports from disk without restarting the game.
 
 ---
@@ -84,18 +84,23 @@ PROYECTO DE JUEGO SMB/
 ├── src/                                 # Game source code & core engine modules
 │   ├── animation.lua                    # Multi-file state animation loader & anim8 wrapper
 │   ├── camera.lua                       # Viewport tracking, configurable scale, & boundary clamping
+│   ├── gameplay.lua                     # Contact, finish priority, and life-state rules
 │   ├── input.lua                        # Two-frame input engine with customizable key bindings
 │   ├── tilemap.lua                      # STI map loader, bump collider registration, & bounds helper
+│   ├── ai/
+│   │   └── dude_monster.lua             # Patrol/attack decisions and tuning values
 │   ├── entities/
 │   │   ├── player.lua                   # Player class (physics, gravity, jump, bump collision, anims)
-│   │   └── enemy.lua                    # Dude Monster chase movement, gravity, terrain collision, anims
+│   │   └── enemy.lua                    # Dude Monster physics, ground sensing, terrain collision, anims
 │   ├── scenes/                          # Reserved for Phase 3 scene management
 │   └── selftest/                        # Automated unit testing suite
 │       ├── runner.lua                   # Test assertion runner & summary reporter
 │       ├── test_animation.lua           # Selftest: animation state transitions & frame stepping
 │       ├── test_bump.lua                # Selftest: AABB box collisions, tile sliding, & responses
 │       ├── test_camera.lua              # Selftest: viewport centering & map boundary clamping
-│       ├── test_enemy.lua               # Selftest: initial Dude Monster behavior (9 checks)
+│       ├── test_enemy.lua               # Selftest: Dude Monster behavior and level spawns (56 checks)
+│       ├── test_gameplay.lua            # Selftest: outcome and life-state rules (27 checks)
+│       ├── test_contact.lua             # Selftest: contact through the real game loop (31 checks currently)
 │       ├── test_full.lua                # Selftest: core integration flow
 │       ├── test_input.lua               # Selftest: input keybinding & snapshot state testing
 │       ├── test_player.lua              # Selftest: player gravity, velocity integration, & movement
@@ -104,10 +109,10 @@ PROYECTO DE JUEGO SMB/
 │
 ├── docs/                                # Technical documentation & design logs
 │   ├── CONCEPTS.md                      # Glossary of Lua, LÖVE2D, & game-dev concepts with examples
-│   ├── DECISIONS.md                     # Technical decision log (#001 – #007) with trade-offs
+│   ├── DECISIONS.md                     # Technical decision log (#001 – #012) with trade-offs
 │   ├── LUA_LOVE_REFERENCE.md            # Syntax reference for Lua & LÖVE2D APIs
 │   ├── PROGRESS.md                      # Feature roadmap tracking Phases 1 through 4
-│   ├── SESSION.md                       # Current active session goals & immediate status
+│   ├── SESSION.md                       # Latest session handoff & immediate status
 │   └── WORKFLOW.md                      # AI-Human pair-programming guidelines & rules
 │
 └── 99 Notes and Concepts/               # Initial project design notes & learning material
@@ -122,10 +127,18 @@ PROYECTO DE JUEGO SMB/
 - **[`src/input.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/input.lua)**: Maps virtual actions (`left`, `right`, `jump`, `run`) to keyboard keys. Maintains `downState` and `prevState` tables.
 - **[`src/animation.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/animation.lua)**: Accepts state definitions mapping animation names to PNG strip paths and frame counts. Manages frame stepping and guard-clause state changes.
 - **[`src/camera.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/camera.lua)**: Calculates target camera position based on player center and clamps it to map boundaries. `main.lua` currently sets `CAMERA_SCALE = 1`.
-- **[`src/tilemap.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/tilemap.lua)**: Loads STI maps, initializes collidable tiles via `map:bump_init(world)`, extracts spawn object layers, and returns map boundary dimensions.
+- **[`src/tilemap.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/tilemap.lua)**: Loads STI maps, initializes collidable tiles via `map:bump_init(world)`, reads the player spawn and every matching enemy point from the `spawn` object layer, and returns map boundary dimensions.
 - **[`src/entities/player.lua`](file:///C:/Users/Admin/Desktop/AI%20and%20Programing/Proyects/LOVE2D/PROYECTO%20DE%20JUEGO%20SMB/src/entities/player.lua)**: Encapsulates player physics (acceleration, gravity, max speed, variable jump), registers bounding box in `bump.lua`, updates position with `world:move()`, and synchronizes state machine with animation states (`idle`, `walk`, `run`, `jump`).
-- **`src/entities/enemy.lua`**: Creates a Dude Monster with idle/walk animation, gravity, terrain collision through `bump.lua`, and horizontal movement toward the player's position. Player and enemy currently pass through each other; combat and damage are not implemented.
-- **`main.lua` gameplay state**: Starts with three lives. Falling below `y = 350` costs one life, shows a death overlay for 5 seconds, then respawns the player and enemy. At zero lives, a game-over overlay appears for 6 seconds before the game restarts with three lives. Reaching the right edge of the map opens a stage-finish prompt; `C` shows that no more stages are available and `F` ends the game, each after a 5-second message.
+- **`src/ai/dude_monster.lua`**: Chooses each Dude Monster's patrol or attack direction and speed. Patrol walks left first and turns at gaps; attack follows a nearby player but waits at gaps. Separate enter/exit distances prevent rapid state switching.
+- **`src/entities/enemy.lua`**: Applies those decisions using idle/walk/run animation, gravity, and terrain collision through `bump.lua`. Patrol moves at 30 px/s and attack at 45 px/s. Its 20×24 contact box remains inside the 32×32 terrain box.
+- **`src/gameplay.lua`**: Checks the player's box against the enemy's smaller contact box after movement, gives the stage finish priority over contact on the same frame, and handles life loss and recovery timers.
+- **`main.lua` gameplay state**: Starts with three lives. Falling below `y = 350` or touching an enemy costs one life, shows a death overlay for 5 seconds, then respawns the player and all mapped enemies. At zero lives, a game-over overlay appears for 6 seconds before the game restarts with three lives. Reaching the right edge of the map opens a stage-finish prompt; `C` shows that no more stages are available and `F` ends the game, each after a 5-second message.
+
+### Placing Dude Monsters in Tiled
+
+Open `assets/maps/level_1_1.tmx`. In the `spawn` object layer, add a **Point** object named exactly `dude_monster_spawn` for each enemy. The point marks the **top-left** of its 32×32 terrain box: put it 32 pixels above the platform surface and ensure the entire 32-pixel width has solid floor underneath. A point overlapping a floor tile or straddling a pit edge can be pushed sideways by collision resolution and fall. Duplicate, move, or delete points to change the enemy count and positions. Keep `player_spawn` for the player.
+
+Save and export the map to `assets/maps/level_1_1.lua`, then press `R` in the game to reload it. The game creates one Dude Monster per point and restores all of them to those positions after a death. With no `dude_monster_spawn` points, no Dude Monsters appear; random placement is no longer used.
 
 ---
 
@@ -160,7 +173,7 @@ All architectural decisions are documented in detail in [`docs/DECISIONS.md`](fi
 ### Current Status: Core systems complete; first gameplay systems underway
 - **Phase 1 (Core Engine)**: Fully complete. Input system, player physics, variable jump, gravity, multi-file animation engine operational.
 - **Phase 2 (World & Physics)**: STI map loading, `bump.lua` AABB collision resolution, custom camera tracking with map clamping, and hot-reloading are implemented.
-- **Gameplay added**: Three lives, pit death and respawn, game over, a stage-finish prompt, and one Dude Monster that animates and chases the player while colliding with terrain. All eight selftest suites passed on September 29, 2026 (166/166 checks). The life and stage transitions still need dedicated tests.
+- **Gameplay added**: Three lives, pit or enemy-contact death and respawn, game over, a stage-finish prompt, and Dude Monsters positioned through Tiled. Each enemy patrols safely until the player is near, then pursues without crossing gaps. The four level 1.1 points now start clear of terrain and stay on their platforms. All 10 selftest suites passed on September 29, 2026 (277/277 checks). The user confirmed in a playtest that all four enemies appear and work with the corrected positions; encounter tuning can continue during level design.
 
 ### Next Steps & Roadmap 🚀
 
@@ -173,9 +186,13 @@ All architectural decisions are documented in detail in [`docs/DECISIONS.md`](fi
 #### 👾 Phase 4 — Enemies & Gameplay Mechanics
 - [x] Add an initial Dude Monster entity with animation, gravity, terrain collision, and chase movement.
 - [x] Add three lives, pit death/respawn, game over, and an end-of-stage prompt.
-- [ ] Add player-enemy interaction (damage, stomp, or another chosen rule) and test it.
+- [x] Add death on player-enemy contact, with stage completion winning a same-frame tie.
+- [x] Place multiple Dude Monsters precisely through Tiled points and recreate them there after respawn or map reload.
+- [x] Separate Dude Monster patrol/attack decisions from physics and animation; prevent both states from walking into gaps.
+- [x] Fix unsafe spawn positions and test that all four start clear of terrain and remain on their platforms.
+- [ ] Add enemy defeat or stomp behavior if desired.
 - [ ] Build a generic base Entity system if multiple enemy types require it.
-- [ ] Implement enemy AI patrol behaviors (Goomba / Pink Monster patrol).
+- [ ] Add distinct AI for future enemy types (Goomba / Pink Monster).
 - [ ] Add collectibles (coins, power-ups) and interactive hazard tiles (pits, spikes).
 - [ ] Add score tracking and a finished gameplay HUD; lives currently appear in the debug HUD.
 
@@ -207,9 +224,9 @@ Run the core integration selftest via CLI:
 ```bash
 lovec . --test=full
 ```
-Run all eight current suites (166 checks in the latest saved reports):
+Run all 10 current suites (277 checks in the latest run):
 ```bash
-lovec . --test=input,animation,player,tilemap,bump,camera,full,enemy
+lovec . --test=input,animation,player,tilemap,bump,camera,full,enemy,gameplay,contact
 ```
 Run specific module tests:
 ```bash

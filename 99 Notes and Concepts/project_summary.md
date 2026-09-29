@@ -177,7 +177,7 @@ Import sprite sheets + tilemap JSON into Love2D
 - [x] Tilemap module with STI
 - [x] Tile-based collision via bump.lua (Top-left coordinate alignment)
 - [x] Camera module with world bounds clamping (current map: 80x11 tiles / 2560x352 pixels; current camera scale: 1x)
-- [x] Automated selftests (157 original checks plus 9 enemy checks in the latest saved reports)
+- [x] Automated selftests (277 checks across 10 suites in the latest run)
 - [x] Live level hot-reload (R key)
 
 ### Phase 3 — Game Feel
@@ -187,13 +187,18 @@ Import sprite sheets + tilemap JSON into Love2D
 
 ### Phase 4 — Enemies and Gameplay
 - [x] Initial Dude Monster entity: animation, gravity, terrain collision, and horizontal pursuit of the player
+- [x] Slower 45 px/s pursuit and death on player contact; finishing the stage wins a same-frame tie
 - [x] Three lives, pit death, respawn, and game over
 - [x] End-of-stage prompt with `C` (no further stage yet) and `F` (finish)
-- [ ] Define player-enemy contact, damage, and defeat rules; the two currently pass through each other
-- [ ] Add more enemy behavior, collectibles, and interactive hazards
+- [x] Place and restore multiple Dude Monsters from `dude_monster_spawn` points in the Tiled `spawn` layer
+- [x] Give Dude Monster independent `patrol` and `attack` states, with gap avoidance and a separate behavior module
+- [x] Reduce its player-contact box to 20×24 while keeping terrain collision at 32×32
+- [x] Correct unsafe level 1.1 spawn points and verify the four enemies with tests and a playtest
+- [ ] Decide whether and how the player can defeat an enemy
+- [ ] Add other enemy types, collectibles, and interactive hazards
 - [ ] Add score and a finished gameplay HUD
 
-The current gameplay additions and expanded map are in the working tree. All eight selftest suites passed on September 29, 2026 (166/166 checks); the life and stage transitions still need dedicated tests.
+Dude Monsters patrol at 30 px/s and attack at 45 px/s when the player is close; both states avoid gaps, with attack waiting at an unsafe edge. `src/ai/dude_monster.lua` makes behavior decisions for each instance while `src/entities/enemy.lua` handles movement, terrain collision, and animation. Their player-contact box is 20×24 inside a 32×32 terrain box. Level 1.1 has four synchronized Tiled/export spawn points. The middle two had spawned overlapping the last tile before a gap, and bump moved them into the hole; all four points now start clear of terrain with the full width over platforms. All 10 selftest suites passed on September 29, 2026 (277/277 checks), including a one-second visibility check. The user then confirmed in a playtest that all four enemies appear and work.
 
 ---
 

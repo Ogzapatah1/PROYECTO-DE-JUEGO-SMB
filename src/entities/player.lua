@@ -6,7 +6,7 @@
 -- WHY THIS MATTERS:
 -- main.lua should never know "how to move a player". It only knows
 -- "there is a player, update it, draw it". All the details live here,
--- and future enemies will copy this exact structure.
+-- Enemy entities can use a similar module structure.
 --
 -- REQUIRE CHAIN:
 --   main.lua → src/entities/player.lua → src/animation.lua → lib/anim8
@@ -19,8 +19,7 @@ local bump      = require("lib/bump")
 
 
 -- ─── TUNING CONSTANTS ────────────────────────────────────────────────────────
--- Once real physics + bump.lua collision exists, these move into
--- the gameplay config. For now they live here.
+-- Player movement and jump values live here while we tune game feel.
 
 local GRAVITY     = 700    -- px per second² (how fast we fall)
 local WALK_SPEED  = 120    -- px per second while walking
@@ -156,7 +155,7 @@ end
 -- ─── FILTER FUNCTION FOR BUMP ────────────────────────────────────────────────
 -- Called by bump for every potential collision.
 -- Return "slide" to slide along walls (standard platformer behavior).
--- Return "cross" to pass through (for one-way platforms, collectibles, etc.).
+-- Return "cross" for enemies; Gameplay.outcome checks harmful overlap after movement.
 
 function Player.filter(item, other)
     if other.isEnemy then return "cross" end

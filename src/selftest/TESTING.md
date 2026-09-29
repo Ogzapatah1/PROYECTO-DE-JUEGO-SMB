@@ -34,6 +34,8 @@
 | `camera` | Cámara | `src/camera` | < 1s |
 | `full` | Integración | **todo** | ~5s |
 | `enemy` | Enemigo inicial | `src/entities/enemy` + `bump` | < 1s |
+| `gameplay` | Reglas de contacto y vidas | `src/gameplay` | < 1s |
+| `contact` | Flujo real de juego | `main.lua` + mundo y entidades reales | < 1s |
 
 ### Qué hace cada test
 
@@ -77,7 +79,8 @@
   - Capas: `ground` (tilelayer, `collidable=true`) + `spawn` (objectgroup)
   - Tileset `cave`: 60 tiles, 10 columnas, imagen incrustada
   - `map.tiles` poblado (gid 1 existe)
-  - `getSpawn("player_spawn")` devuelve coordenadas válidas
+- `getSpawn("player_spawn")` devuelve coordenadas válidas
+- `getSpawns` devuelve todos los puntos con el mismo nombre en orden, ignora objetos que no son Point y devuelve una lista vacía si no hay coincidencias
   - `getBounds()` coincide con las dimensiones del mapa (actualmente 0, 0, 2560, 352)
 
 #### `test_bump.lua`
@@ -118,8 +121,20 @@
 
 #### `test_enemy.lua` (Dude Monster inicial)
 - Crea un enemigo con mundo `bump` y comprueba posición inicial y bandera `isEnemy`.
-- Verifica que se orienta y mueve horizontalmente hacia un jugador situado a su derecha o izquierda, y que usa la animación `walk`.
-- Son 9 checks. Este test no valida todavía daño al jugador, combate ni el flujo completo de vidas/game over/fin de etapa.
+- Comprueba el módulo `src/ai/dude_monster.lua`: patrulla inicialmente a la izquierda a 30 px/s, gira ante un hueco, espera si no hay suelo seguro y entra en ataque al acercarse el jugador.
+- El ataque a 45 px/s se detiene ante un hueco aunque el jugador se acerque desde el otro lado; se reanuda si el jugador llega al mismo lado. El enemigo retorna a patrulla al alejarse el jugador.
+- Usa un mundo real `bump` para comprobar el ciclo repetido de patrulla entre bordes, huecos, paredes, animación `run` y estados independientes de varias instancias. Comprueba además que cada punto del nivel 1.1 empieza sin solaparse con terreno y que el enemigo permanece visible y aterrizado después de un segundo. La caja de terreno sigue midiendo 32×32. Son 56 checks con los cuatro puntos actuales; muerte y vidas se prueban en `test_gameplay.lua` y `test_contact.lua`.
+
+#### `test_gameplay.lua` (reglas de juego)
+- Comprueba solapamiento enemigo-jugador, ausencia de contacto cuando las cajas solo se tocan por el borde, el área de contacto reducida del enemigo y muerte por foso.
+- Verifica que el fin de etapa gana si ocurre en el mismo frame que el contacto.
+- Verifica pérdida única de vida, temporizadores, respawn y reinicio tras game over (27 checks).
+
+#### `test_contact.lua` (integración con `main.lua`)
+- Comprueba que cada punto `dude_monster_spawn` del mapa crea un enemigo en las coordenadas precisas de Tiled y que reaparece allí tras una muerte. El nivel debe contener al menos un punto para ejercer la prueba de contacto.
+- Ejecuta `love.update` con jugador y enemigo reales colocados en contacto; comprueba una sola vida perdida, estado `died`, respawn y separación de entidades.
+- Coloca ambos en la meta para comprobar la prioridad del fin de etapa.
+- Comprueba contacto en la última vida, estado `game_over` y reinicio con tres vidas. La cantidad de checks cambia con el número de puntos de aparición del mapa (31 checks con los cuatro puntos actuales del `.lua`).
 
 ---
 
@@ -127,7 +142,7 @@
 
 ### Dispatcher `--test`
 ```lua
--- love . --test=input,animation,player,tilemap,bump,camera,full,enemy
+-- love . --test=input,animation,player,tilemap,bump,camera,full,enemy,gameplay,contact
 -- love . --test=full        # alias --selftest
 -- love .                    # juego normal
 ```
@@ -185,7 +200,9 @@ PROYECTO DE JUEGO SMB/
     ├── selftest_bump.txt
     ├── selftest_camera.txt
     ├── selftest_full.txt
-    └── selftest_enemy.txt
+    ├── selftest_enemy.txt
+    ├── selftest_gameplay.txt
+    └── selftest_contact.txt
 ```
 
 Cada reporte contiene líneas `[PASS]`/`[FAIL]` y un `[SUMMARY] N/N PASS`.
@@ -199,7 +216,7 @@ Cada reporte contiene líneas `[PASS]`/`[FAIL]` y un `[SUMMARY] N/N PASS`.
 
 ## Lecciones aprendidas
 
-1. **Aislar dependencias**: mocks para world/input en tests unitarios; bump real solo en `test_bump` y `test_full`
+1. **Aislar dependencias**: mocks para world/input cuando corresponde; `bump` real en `test_bump`, `test_full`, `test_enemy` y `test_contact`
 2. **Rutas absolutas fijas** para reportes (evita AppData variable)
 3. **Trace en vivo** (`progress.txt`) para diagnosticar cuelgues mid-test
 4. **Guard clauses en tests**: cada check independiente, no `assert` que para todo
@@ -208,15 +225,15 @@ Cada reporte contiene líneas `[PASS]`/`[FAIL]` y un `[SUMMARY] N/N PASS`.
 7. **`Input.force` design**: `previous = not value` para que `isPressed`/`isReleased` disparen en el frame correcto
 8. **Estandarización Top-Left (x, y)**: bump.lua opera con coordenadas top-left; enviar centro del sprite a `world:move()` generaba desplazamiento por frame. Usar top-left en la entidad resolvió la física.
 9. **Desempacado de `Tilemap.getBounds`**: `Tilemap.getBounds` devuelve 4 valores (`minX, minY, maxX, maxY`). Al desempacar como `local _, _, mapW, mapH` la cámara recibe el ancho/alto real del mapa.
-10. **Ejecución del 29 de septiembre de 2026**: **157/157** checks en los siete módulos originales y **9/9** en `enemy` (166/166 en total), con código de salida 0.
+10. **Ejecución del 29 de septiembre de 2026**: **277/277** checks en 10 módulos, con código de salida 0. `enemy` comprueba patrulla/ataque y que los cuatro puntos de aparición no solapen el terreno ni caigan fuera del mapa; `contact` valida posiciones y respawn.
 
 ---
 
 ## Próximos pasos recomendados
 
 - [x] Añadir `test_enemy.lua` para creación, orientación, movimiento y animación iniciales
-- [ ] Añadir pruebas de la interacción jugador-enemigo y de las transiciones muerte/respawn/game over/fin de etapa
+- [x] Añadir `test_gameplay.lua` y `test_contact.lua` para contacto, muerte, respawn, game over y prioridad de meta
 - [ ] Añadir test `test_scene.lua` para SceneManager
-- [ ] Integrar en CI (GitHub Actions: `lovec . --test=input,animation,player,tilemap,bump,camera,full,enemy`)
+- [ ] Integrar en CI (GitHub Actions: `lovec . --test=input,animation,player,tilemap,bump,camera,full,enemy,gameplay,contact`)
 - [ ] Test de regresión visual: hash de frame renderizado vs baseline (opcional)
 - [ ] Medir coverage con `luacov` si el proyecto crece

@@ -101,7 +101,7 @@ end
 **Solución (MVP):** Chequear el suelo con la altura VISUAL: `halfH = (height/2) * scale`. Los pies tocan exactamente la superficie.
 **En nuestro juego:** `GROUND_Y = 224` en player.lua. Este atajo se revisará cuando llegue bump.lua (DECISIONS.md #004).
 
-### Estados de animación == comportamiento (state machine)
+### La animación refleja el comportamiento
 **Qué es:** No eliges la animación "por si acaso": eliges el estado según lo que de verdad pasó este frame. Es la regla que mantiene el sprite honesto con el gameplay.
 **En nuestro juego:**
 ```lua
@@ -158,7 +158,7 @@ local anim = anim8.newAnimation(grid("1-6", 1), 0.1)  -- 6 frames, fila 1
 **En nuestro juego:** Al presionar `R`, LÖVE relee `assets/maps/level_1_1.lua` desde el disco, reconstruyendo el mapa de STI y el mundo de bump. Esto permite editar niveles en Tiled, exportar y ver los cambios al instante.
 
 ### Suite de Selftests Progresiva
-**Qué es:** Un arnés de pruebas automatizado dividido en módulos (`test_input`, `test_animation`, `test_player`, `test_tilemap`, `test_bump`, `test_camera`, `test_full`, `test_enemy`).
+**Qué es:** Un arnés de pruebas automatizado dividido en módulos (`test_input`, `test_animation`, `test_player`, `test_tilemap`, `test_bump`, `test_camera`, `test_full`, `test_enemy`, `test_gameplay`, `test_contact`).
 **Por qué importa:** Permite validar de forma aislada cada subsistema. Si algo falla, el reporte indica exactamente qué módulo romper y por qué.
 
 ### Archivo Fuente (.tmx) vs Archivo Exportado (.lua) en Tiled
@@ -182,9 +182,13 @@ local anim = anim8.newAnimation(grid("1-6", 1), 0.1)  -- 6 frames, fila 1
 **Qué es:** Una variable que indica qué parte del flujo está activa: `playing`, `died`, `game_over`, `stage_finished`, `no_more_stages` o `ending`.
 **En nuestro juego:** `main.lua` actualiza jugador y enemigo solo en `playing`. Al caer al foso, resta una de las 3 vidas y muestra `died` durante 5 segundos antes de reaparecer; con 0 vidas muestra `game_over` durante 6 segundos antes de reiniciar. Al llegar al extremo derecho, `stage_finished` espera la tecla `C` o `F`.
 
-### Seguimiento horizontal del Dude Monster
-**Qué es:** Una regla simple de movimiento que compara la posición horizontal del enemigo con la del jugador y elige caminar a izquierda o derecha.
-**En nuestro juego:** `src/entities/enemy.lua` usa esa comparación, aplica gravedad y mueve la caja de colisión con `bump.lua`. El enemigo se anima, cae y choca con el terreno. El contacto con el jugador todavía no causa daño: ambos se atraviesan.
+### Estados de comportamiento del Dude Monster
+**Qué es:** Cada enemigo guarda su propio estado `patrol` o `attack`. La patrulla recorre terreno seguro; el ataque se activa al acercarse el jugador y se desactiva cuando se aleja más, evitando cambios rápidos de estado.
+**En nuestro juego:** `src/ai/dude_monster.lua` decide dirección y velocidad. `src/entities/enemy.lua` consulta el suelo por delante en `bump.lua`: en patrulla gira ante huecos y en ataque espera en el borde si el jugador está al otro lado. La patrulla usa 30 px/s y animación `walk`; el ataque usa hasta 45 px/s y `run`. `enemy.lua` mantiene gravedad, colisión de terreno de 32×32 y caja de contacto de 20×24. `src/gameplay.lua` procesa el contacto y da prioridad a la meta en un mismo frame.
+
+### Múltiples puntos de aparición en Tiled
+**Qué es:** Varios objetos Point con el mismo nombre dentro del layer `spawn` permiten colocar varias instancias del mismo enemigo sin fijar sus coordenadas en el código.
+**En nuestro juego:** `Tilemap.getSpawns(map, "dude_monster_spawn")` recoge cada punto del nivel 1.1; `main.lua` crea y restaura un Dude Monster por punto. Cada `(x, y)` marca la esquina superior izquierda de su caja de terreno de 32×32: la caja entera debe quedar sobre suelo y fuera de tiles sólidos al aparecer. Tras editar `level_1_1.tmx`, se exporta `level_1_1.lua` y se pulsa `R` para recargar el juego.
 
 ---
 

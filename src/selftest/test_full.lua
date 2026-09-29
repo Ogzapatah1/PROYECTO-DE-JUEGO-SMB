@@ -1,7 +1,7 @@
 -- src/selftest/test_full.lua
 --
 -- PURPOSE: Full integration test (spawn → move → jump → collide → camera).
---          This is the "acceptance test" that exercises the entire pipeline.
+--          Covers the core movement pipeline; lives and stage flow are not tested here.
 
 local Runner = require("src.selftest.runner")
 local Input    = require("src/input")
